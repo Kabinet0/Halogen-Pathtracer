@@ -1,0 +1,487 @@
+#pragma kernel HalogenCompute
+
+static const float PI = radians(180);
+static uint randomState;
+
+int RandomSeed;
+
+float4x4 CamLocalToWorldMatrix;
+
+// Packing these more efficiently would be easy, but I don't want to
+float4 ScreenParameters; // x: x resolution
+                         // y: y resolution
+                         // z:
+                         // w:
+
+float4 ViewParameters; // x: w/2 for clip plane
+                       // y: h/2 for clip plane
+                       // z: near clip plane distance
+                       // w:
+
+float4 CameraParameters; // x: Camera X
+                         // y: Camera Y
+                         // z: Camera Z
+                         // w:
+
+RWTexture2D<float4> Output;
+RWTexture2D<float4> OutputSecondBounce;
+
+uint SamplesPerPixel;
+uint MaxBounces;
+
+float focalPlaneDistance;
+float focalConeAngle;
+
+struct HalogenMaterial
+{
+    float4 albedo;
+    float4 specularAlbedo;
+    float metallic;
+    float roughness;
+    float4 emissive;
+};
+
+struct Sphere
+{
+    float3 center;
+    float radius;
+    HalogenMaterial material;
+    float3 boundingCornerA;
+    float3 boundingCornerB;
+};
+
+struct Mesh
+{
+    uint startingIndex;
+    uint triangleCount;
+    float3 boundingCornerA;
+    float3 boundingCornerB;
+    uint materialIndex;
+    float4x4 worldToLocal;
+    float4x4 localToWorld;
+};
+
+struct Triangle
+{
+    float3 v0, v1, v2;
+    float3 n0, n1, n2;
+};
+
+struct Ray
+{
+    float3 origin;
+    float3 dir;
+};
+
+struct RayHit
+{
+    bool hit;
+    //bool frontFace;
+    float3 pos; // hit point
+    float3 normal;
+    HalogenMaterial material;
+};
+
+float3 DiffuseSecondBounce = float3(0, 0, 0);
+
+StructuredBuffer<Triangle> TriangleBuffer;
+StructuredBuffer<HalogenMaterial> MaterialList;
+StructuredBuffer<Sphere> SphereList;
+StructuredBuffer<Mesh> MeshList;
+float4 BufferCounts; // x: Spheres, y: MeshData
+
+// Literal Sebastian Lague theft: https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=679s
+// Also discovered (independantly I swear) from on https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ 
+float random_value()
+{
+    uint state = randomState;
+    randomState = randomState * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    uint val = (word >> 22u) ^ word;
+    return (float) val / 4294967296.0f;
+}
+
+
+float3 get_random_unit_vector()
+{
+    float u = random_value();
+    float v = random_value();
+    float theta = u * 2.0 * PI;
+    float phi = acos(2.0 * v - 1.0);
+    float r = 1;
+    float sinTheta = sin(theta);
+    float cosTheta = cos(theta);
+    float sinPhi = sin(phi);
+    float cosPhi = cos(phi);
+    float x = r * sinPhi * cosTheta;
+    float y = r * sinPhi * sinTheta;
+    float z = r * cosPhi;
+    float3 randomVector = float3(x, y, z);
+    
+    return randomVector;
+}
+
+float2 get_random_point_circle(float radius)
+{
+    float theta = radians(random_value() * 360);
+    float distAlongRadius = random_value();
+    return float2(cos(theta) * radius * distAlongRadius, sin(theta) * radius * distAlongRadius);
+}
+
+float3 sample_sky(Ray ray)
+{
+    float v = 0.5f * (ray.dir.y + 1.0f);
+    return lerp(float3(0.1f, 0.1f, 0.1f), float3(0.5f, 0.7f, 1.0f), v) * 0.7f;
+    //return float3(0.0f, 0.0f, 0.0f);
+}
+
+Ray convert_ray_space(in Ray ray, float4x4 mat)
+{
+    Ray outputRay;
+    outputRay.origin = (float3) mul(mat, float4(ray.origin, 1.0f));
+    outputRay.dir = (float3) mul(mat, float4(ray.dir, 0.0f));
+    
+    return outputRay;
+}
+
+// Takes a normal (might be backface) and flips if needed based on ray
+void determine_frontface(inout RayHit hit, float3 dir) 
+{
+    bool frontFace = dot(dir, hit.normal) < 0.0;
+    if (!frontFace) {
+        hit.normal = -hit.normal;
+    }
+}
+
+// ray_preInv means it expects a pre inverted direction aka. dir = 1/dir is precomputed and baked into the ray struct 
+bool ray_AABB_test(float3 cornerA, float3 cornerB, in Ray ray_preInv)
+{
+    float3 t1 = (cornerA - ray_preInv.origin) * ray_preInv.dir;
+    float3 t2 = (cornerB - ray_preInv.origin) * ray_preInv.dir;
+    
+    float tMin = min(t1.x, t2.x);
+    float tMax = max(t1.x, t2.x);
+    
+    tMin = max(tMin, min(t1.y, t2.y));
+    tMax = min(tMax, max(t1.y, t2.y));
+    
+    tMin = max(tMin, min(t1.z, t2.z));
+    tMax = min(tMax, max(t1.z, t2.z));
+    
+    return tMax > max(0, tMin);
+}
+
+RayHit sphere_intersection(Ray ray, Sphere sphere)
+{
+    float3 shiftedRayOrigin = ray.origin - sphere.center;
+    
+    // coefficients for quadratic equation
+    //float a = dot(ray.dir, ray.dir); // This should be 1, like, always?
+    float a = 1; // TWO WEEKS LATER: BE SURE DIRECTION IS NORMALIZED DUMMY  <-- This mistake cost me at least three days
+    
+    float b = 2.0 * dot(shiftedRayOrigin, ray.dir);
+    float c = dot(shiftedRayOrigin, shiftedRayOrigin) - sphere.radius * sphere.radius;
+    
+    float discriminant = b * b - 4*a*c;
+    
+    RayHit rayhit = (RayHit)0;
+    rayhit.hit = false;
+    
+    if (discriminant >= 0.0f)
+    {
+        float distance = (-b - sqrt(discriminant)) / (2.0 * a);
+        
+        if (distance > 0.0f)
+        {
+            rayhit.hit = true;
+            rayhit.pos = ray.origin + ray.dir * distance;
+            rayhit.normal = normalize(rayhit.pos - sphere.center); // outward normal
+            rayhit.material = sphere.material;
+        }
+    }
+    
+    
+    return rayhit;
+}
+
+RayHit triangle_intersection_doublesided(Ray ray, Triangle tri, out float2 barycentric)
+{
+    RayHit rayhit = (RayHit)0;
+    rayhit.hit = false;
+    
+    float3 v0v1 = tri.v1 - tri.v0;
+    float3 v0v2 = tri.v2 - tri.v0;
+    float3 normal = cross(v0v1, v0v2);
+    
+    // Determinant
+    float3 cross_dir_v0v2 = cross(ray.dir, v0v2);
+    float determinant = dot(cross_dir_v0v2, v0v1);
+    
+    // Ray is parallel to triangle plane
+    if (abs(determinant) < 0.00000001f)
+    {
+        return rayhit;
+    }
+    float inv_determinant = 1 / determinant;
+    
+    float3 OriginV0 = ray.origin - tri.v0;
+    
+    // Barycentric U
+    float U = dot(OriginV0, cross_dir_v0v2) * inv_determinant;
+    if (U < 0.0 || U > 1.0)
+    {
+        return rayhit;
+    }
+    
+    // Barycentric V
+    float3 cross_OriginV0_v0v1 = cross(OriginV0, v0v1);
+    float V = dot(ray.dir, cross_OriginV0_v0v1) * inv_determinant;
+    if (V < 0.0 || U + V > 1.0)
+    {
+        return rayhit;
+    }
+    
+    float rayT = dot(v0v2, cross_OriginV0_v0v1) * inv_determinant;
+    if (rayT > 0)
+    {
+        barycentric = float2(U, V);
+        
+        rayhit.hit = true;
+        rayhit.pos = ray.origin + (ray.dir * rayT) + normal * 0.0001;
+        // Finish filling struct later if ray is actually closer
+    }
+    
+    return rayhit;
+}
+
+RayHit get_ray_intersection(in Ray ray)
+{ 
+    RayHit closestIntersection;
+    closestIntersection.hit = false;
+    
+    float closestDistance = 1.#INF; // allegedly gives INF
+    float hitDistanceEpsilon = 0.0001f;
+    
+    Ray ray_preInv = ray; // Pre invert and cache result for faster intersecion testing
+    ray_preInv.dir = 1 / ray_preInv.dir;
+    for (int i = 0; i < (int)BufferCounts.x; i++) 
+    {
+        if (ray_AABB_test(SphereList[i].boundingCornerA, SphereList[i].boundingCornerB, ray_preInv))
+        {
+            RayHit hit = sphere_intersection(ray, SphereList[i]);
+            if (hit.hit)
+            {
+                float hitDistance = distance(ray.origin, hit.pos);
+                if (hitDistance < closestDistance && hitDistance > hitDistanceEpsilon) // Ignore hits too small
+                {
+                    closestIntersection = hit;
+                    closestDistance = hitDistance;
+                }
+            }
+        }
+    }
+    
+    
+    for (int i = 0; i < (int)BufferCounts.y; i++)
+    {
+        Mesh meshData = MeshList[i];
+        if (ray_AABB_test(meshData.boundingCornerA, meshData.boundingCornerB, ray_preInv))
+        {
+            Ray localRay = convert_ray_space(ray, meshData.worldToLocal);
+            // Loop through triangles in mesh
+            for (uint tri = 0; tri < meshData.triangleCount; tri++)
+            {
+                float2 baryCoords = float3(0, 0, 0);
+                Triangle currentTriangle = TriangleBuffer[tri + meshData.startingIndex];
+    
+                RayHit hit = triangle_intersection_doublesided(localRay, currentTriangle, baryCoords);
+                if (hit.hit)
+                {
+                    float hitDistance = distance(localRay.origin, hit.pos);
+                    if (hitDistance < closestDistance && hitDistance > hitDistanceEpsilon)
+                    {
+                        closestIntersection = hit;
+                        
+                        // Complete struct
+                        //closestIntersection.normal = mul(baryCoords, float3x3(currentTriangle.n0, currentTriangle.n1, currentTriangle.n2));
+                        closestIntersection.normal = currentTriangle.n0 + (currentTriangle.n1 - currentTriangle.n0) * baryCoords.x + (currentTriangle.n2 - currentTriangle.n0) * baryCoords.y;
+                        closestIntersection.material = MaterialList[meshData.materialIndex];
+                        
+                        // This is not clean code
+                        closestIntersection.pos = (float3) mul(meshData.localToWorld, float4(closestIntersection.pos, 1.0f));
+                        closestIntersection.normal = (float3) mul(meshData.localToWorld, float4(closestIntersection.normal, 0.0f));
+                        
+                        closestDistance = hitDistance;
+                    } 
+                }
+            }
+        }
+    }
+
+    
+    
+    determine_frontface(closestIntersection, ray.dir);
+    return closestIntersection;
+}
+
+// Always scatters
+float3 lambertain_scatter(in float3 incident, in float3 normal)
+{
+    float3 scatterPointLambertain = get_random_unit_vector() + normal;
+    if (length(scatterPointLambertain) < 1e-8) { // Catch tiny ray distance & rounding errors
+        scatterPointLambertain = normal;
+    }
+        
+    return scatterPointLambertain;
+}
+
+// How does this work?
+float3 specular_scatter(in float3 incident, in float3 normal)
+{
+    return incident - 2 * dot(incident, normal) * normal;
+}
+
+float3 schlick_approximation(float3 specularColor, float3 incidentDirection, float3 halfwayVector)
+{
+    return specularColor + (1 - specularColor) * pow((1 - (incidentDirection * halfwayVector)), 5);
+}
+
+// Trowbridge-Reitz Distribution 
+// Squares roughness to improve perceptual linearity
+float3 microfacet_normal_distribution(float3 halfwayVector, float roughness)
+{
+    //float tan2Theta = tan2
+    return float3(1, 1, 1);
+}
+
+float3 material_BRDF(inout Ray ray, in RayHit hit)
+{
+    float3 attenuation = hit.material.albedo.rgb;
+
+    ray.origin = hit.pos;
+
+    float3 diffuseRayDir = lambertain_scatter(ray.dir, hit.normal);
+    if (random_value() < hit.material.metallic)
+    {
+        float3 specularRayDir = specular_scatter(ray.dir, hit.normal);
+        // Account for rough reflection
+        // Sqauring roughness makes roughness look more perceptually linear: https://blog.demofox.org/2020/06/06/casual-shadertoy-path-tracing-2-image-improvement-and-glossy-reflections/
+        specularRayDir = lerp(specularRayDir, diffuseRayDir, hit.material.roughness * hit.material.roughness);
+        attenuation = hit.material.specularAlbedo.rgb;
+        
+        
+        ray.dir = specularRayDir;
+    }
+    else
+    {
+        ray.dir = diffuseRayDir;
+    }
+    
+    ray.dir = normalize(ray.dir);
+    return attenuation;
+}
+
+// Iterative method documented here: https://www.cs.uaf.edu/2012/spring/cs481/section/0/lecture/02_07_recursion_reflection.html
+float3 trace_ray(in Ray ray)
+{
+    float3 AccumulatedColor = float3(0, 0, 0);
+    float3 lightAttenuation = float3(1, 1, 1); // If something looks weird, add "precise" here
+    
+    for (uint rayInteractions = 0; rayInteractions <= MaxBounces; rayInteractions++)
+    {
+        if (length(lightAttenuation) < 0.05f)
+        {
+            break;
+        }
+        
+        RayHit hit = get_ray_intersection(ray);
+        
+        if (hit.hit)
+        {
+            // Scatters ray with diffuse BRDF
+            float3 attenuation = material_BRDF(ray, hit); // attenuates and scatters
+
+            
+            float3 emissive = hit.material.emissive.rgb * hit.material.emissive.a;
+            
+            AccumulatedColor += emissive * lightAttenuation;
+            lightAttenuation *= attenuation; 
+            
+
+            DiffuseSecondBounce += emissive * lightAttenuation * (rayInteractions > 0);
+        }
+        else
+        {
+            AccumulatedColor += sample_sky(ray) * lightAttenuation; // Emissive
+            break;
+        }
+    }
+    
+    return AccumulatedColor;
+}
+
+float2 get_ray_jitter()
+{
+    float jitterX = ((ViewParameters.x * 2) / ScreenParameters.x) * (random_value() - 0.5f);
+    float jitterY = ((ViewParameters.y * 2) / ScreenParameters.y) * (random_value() - 0.5f);
+    
+    return float2(jitterX, jitterY);
+}
+
+Ray get_ray(float2 uvNDC)
+{
+    float focalDiscRadius = tan(radians(focalConeAngle)) * ViewParameters.z;
+    float3 rayAperturePoint = float3(get_random_point_circle(focalDiscRadius), 0);
+    
+    //float clipPlaneModifier = ViewParameters.x / focalPlaneDistance;
+    float3 rayScreenPoint = float3(uvNDC.x, uvNDC.y, 1.0f) * ViewParameters.xyz; // Camera space
+    rayScreenPoint += float3(get_ray_jitter(), 0.0f);
+    
+    // I love local space. It's a direction now.
+    float3 pointOnFocalPlane = normalize(rayScreenPoint) * focalPlaneDistance; // Camera space
+    float3 cameraSpaceDir = normalize(pointOnFocalPlane - rayAperturePoint);
+    
+    Ray ray;
+    ray.origin = (float3)mul(CamLocalToWorldMatrix, float4(rayAperturePoint, 1.0f));
+    ray.dir = normalize((float3) mul(CamLocalToWorldMatrix, float4(cameraSpaceDir, 0.0f)));
+    return ray;
+}
+
+[numthreads(8,8,1)]
+void HalogenCompute (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x > (uint)ScreenParameters.x || id.y > (uint) ScreenParameters.y)
+    {
+        return; 
+    }
+    
+    float2 uv = float2((float)id.x / ScreenParameters.x, (float)id.y / ScreenParameters.y);
+    float2 uvNDC = uv * 2.0f - 1.0f;
+    randomState = (id.x + id.y * ScreenParameters.x) * RandomSeed;
+    
+
+    float rayScale = 1.0f / SamplesPerPixel;
+    float3 RayColor = float3(0.0f, 0.0f, 0.0f);
+    for (uint rayID = 0; rayID < SamplesPerPixel; rayID++)
+    {
+        Ray ray = get_ray(uvNDC);
+        RayColor += trace_ray(ray);
+        
+        // Debug mesh bounding boxes
+        //Ray ray_preInv = ray;
+        //ray_preInv.dir = 1 / ray_preInv.dir;
+        //for (int k = 0; k < BufferCounts.y; k++)
+        //{
+        //    if (ray_AABB_test(MeshList[k].boundingCornerA, MeshList[k].boundingCornerB, ray_preInv))
+        //    {
+        //        RayColor += MaterialList[MeshList[k].materialIndex].albedo * 0.5f;
+        //    }
+        //}
+
+    }
+    RayColor = RayColor * rayScale;
+
+    Output[id.xy] = float4(RayColor, 1.0f);
+    OutputSecondBounce[id.xy] = float4(DiffuseSecondBounce * rayScale, 1.0f);
+
+}

@@ -1,0 +1,4 @@
+repository "Halogen Pathtracer@Kabinet@cloud"
+  path "/"
+    br "/main"
+    co "/main"
