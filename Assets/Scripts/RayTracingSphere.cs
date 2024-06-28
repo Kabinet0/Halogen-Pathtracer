@@ -8,6 +8,9 @@ public class RayTracingSphere : MonoBehaviour
     [SerializeField] public HalogenMaterial material = new HalogenMaterial(Color.white); // Silly C# 9
     [SerializeField] float Radius;
 
+    // Unique ID
+    private uint id = 0;
+
     private void OnValidate()
     {
         transform.localScale = new Vector3(Radius * 2, Radius * 2, Radius * 2);
@@ -15,7 +18,7 @@ public class RayTracingSphere : MonoBehaviour
 
     void OnEnable()
     {
-        RayTracingManager.AddToSphereList(this);
+        id = RayTracingManager.AddToSphereList(this);
     }
 
     public float GetRadius()
@@ -26,5 +29,9 @@ public class RayTracingSphere : MonoBehaviour
     void OnDisable()
     {
         RayTracingManager.RemoveFromSphereList(this);
+    }
+    public uint GetID()
+    {
+        return id;
     }
 }

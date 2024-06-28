@@ -75,6 +75,7 @@ public class HalogenRenderPass : ScriptableRenderPass
     bool AccumulationBufferDirty;
 
     float NearPlaneDistance;
+    float FarPlaneDistance;
     float FocalPlaneDistance;
     float ApertureAngle;
 
@@ -135,6 +136,7 @@ public class HalogenRenderPass : ScriptableRenderPass
         FocalPlaneDistance = Mathf.Max(Mathf.Epsilon, _settings.FocalPlaneDistance);
 
         NearPlaneDistance = Mathf.Max(Mathf.Epsilon, _settings.NearPlaneDistance);
+        FarPlaneDistance = Mathf.Max(NearPlaneDistance + Mathf.Epsilon, _settings.FarPlaneDistance);
 
         ApertureAngle = Mathf.Clamp(_settings.ApertureAngle, 0, 89.9f);
 
@@ -222,7 +224,7 @@ public class HalogenRenderPass : ScriptableRenderPass
 
             cmd.SetComputeMatrixParam(halogenShader, "CamLocalToWorldMatrix", camera.transform.localToWorldMatrix);
             cmd.SetComputeVectorParam(halogenShader, "ScreenParameters", new Vector3(camera.pixelWidth, camera.pixelHeight, 0));
-            cmd.SetComputeVectorParam(halogenShader, "ViewParameters", new Vector3(w, h, nClip));
+            cmd.SetComputeVectorParam(halogenShader, "ViewParameters", new Vector4(w, h, nClip, FarPlaneDistance));
             cmd.SetComputeVectorParam(halogenShader, "CameraParameters", camera.transform.position);
 
             
@@ -314,7 +316,8 @@ public class HalogenRenderPass : ScriptableRenderPass
 
 
         // Fill sphere list
-        foreach (var sphere in RayTracingManager.GetSphereList()){
+        foreach (RayTracingSphere sphere in RayTracingManager.GetSphereList().Values){
+            // Pack struct with sphere data
             HalogenSphere sphereStruct = new HalogenSphere();
             sphereStruct.center = sphere.transform.position;
             sphereStruct.radius = sphere.GetRadius();
@@ -329,7 +332,7 @@ public class HalogenRenderPass : ScriptableRenderPass
 
         // Fill mesh related lists
         uint numTrianglesAdded = 0;
-        foreach (RayTracingMesh mesh in RayTracingManager.GetMeshList())
+        foreach (RayTracingMesh mesh in RayTracingManager.GetMeshList().Values)
         {
             // Add to material list & get index
             uint materialIndex = AddMaterialToList(PackHalogenMaterial(mesh.material));
@@ -343,6 +346,8 @@ public class HalogenRenderPass : ScriptableRenderPass
             // Increment number of triangles added
             numTrianglesAdded += mesh.GetTriangleCount();
         }
+
+        Debug.Log("Number of meshes loaded for raytracing: " + meshList.Count);
 
         ReallocateComputeBufferIfNeeded(ref sphereBuffer, sphereList.Count, sphereStructStride);
         ReallocateComputeBufferIfNeeded(ref meshBuffer, meshList.Count, meshStructStride);

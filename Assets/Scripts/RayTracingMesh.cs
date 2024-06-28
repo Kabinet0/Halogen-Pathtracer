@@ -8,6 +8,8 @@ using static UnityEngine.Mesh;
 [ExecuteInEditMode]
 public class RayTracingMesh : MonoBehaviour
 {
+    private readonly float AABBEpsilon = 0.00001f;
+
     public HalogenMaterial material = new HalogenMaterial(Color.white); // Silly C# 9
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
@@ -16,9 +18,12 @@ public class RayTracingMesh : MonoBehaviour
     private HalogenTriangle[] triangleList;
     private HalogenMeshData meshData = new HalogenMeshData();
 
+    // Unique ID
+    private uint id = 0;
+
     void OnEnable()
     {
-        RayTracingManager.AddToMeshList(this);
+        id = RayTracingManager.AddToMeshList(this);
         meshFilter = GetComponent<MeshFilter>();
         meshRenderer = GetComponent<MeshRenderer>();
 
@@ -61,8 +66,8 @@ public class RayTracingMesh : MonoBehaviour
         meshData.startingIndex = startingTriangleIndex;
         meshData.materialIndex = materialIndex;
 
-        meshData.localToWorld = transform.localToWorldMatrix;
-        meshData.worldToLocal = transform.worldToLocalMatrix;
+        meshData.localToWorld = meshRenderer.localToWorldMatrix;
+        meshData.worldToLocal = meshRenderer.worldToLocalMatrix;
 
         return meshData;
     }
@@ -74,12 +79,25 @@ public class RayTracingMesh : MonoBehaviour
 
     public Bounds GetBounds()
     {
-        var bounds = meshRenderer?.bounds;
-        return bounds.Value;
+        var bounds = meshRenderer.bounds;
+
+
+        // Ensure AABB is at least of a certain size
+        if (bounds.size.x < AABBEpsilon || bounds.size.y < AABBEpsilon || bounds.size.z < AABBEpsilon)
+        {
+            bounds.max += Vector3.one * AABBEpsilon;
+        }
+        //bs = bounds.size;
+        return bounds;
     }
 
     public uint GetTriangleCount()
     {
         return (uint)triangleList.Length;
+    }
+
+    public uint GetID()
+    {
+        return id;
     }
 }

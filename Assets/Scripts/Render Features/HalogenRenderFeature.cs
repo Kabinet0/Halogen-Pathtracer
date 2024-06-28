@@ -2,6 +2,13 @@ using UnityEngine.Rendering.Universal;
 using UnityEngine;
 
 
+public enum HalogenDebugMode {
+    None,
+    Albedo,
+    ZeroBounce
+}
+
+
 [System.Serializable]
 public struct HalogenSettings
 {
@@ -15,9 +22,17 @@ public struct HalogenSettings
 
     public int SamplesPerPixel;
     public int MaxBounces;
+    
+    [Header("Camera")]
     public float NearPlaneDistance;
+    public float FarPlaneDistance;
     public float FocalPlaneDistance;
     [Range(0, 90)] public float ApertureAngle;
+
+    [Header("Debug (Unimplemented)")]
+    
+    public HalogenDebugMode DebugMode;
+    public bool ShowBoundingBoxes;
 } 
 
 [DisallowMultipleRendererFeature]
