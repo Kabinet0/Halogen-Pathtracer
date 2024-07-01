@@ -5,7 +5,15 @@ using UnityEngine;
 public enum HalogenDebugMode {
     None,
     Albedo,
-    ZeroBounce
+    Normal
+}
+
+public enum HalogenMeshBoundsDebugMode
+{
+    None,
+    MeshBounds,
+    BLAS,
+    TLAS
 }
 
 
@@ -29,10 +37,10 @@ public struct HalogenSettings
     public float FocalPlaneDistance;
     [Range(0, 90)] public float ApertureAngle;
 
-    [Header("Debug (Unimplemented)")]
+    [Header("Debug")]
     
     public HalogenDebugMode DebugMode;
-    public bool ShowBoundingBoxes;
+    public HalogenMeshBoundsDebugMode BoundsDebugMode;
 } 
 
 [DisallowMultipleRendererFeature]

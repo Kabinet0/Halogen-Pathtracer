@@ -29,6 +29,8 @@ RWTexture2D<float4> OutputSecondBounce;
 uint SamplesPerPixel;
 uint MaxBounces;
 
+uint DebugMode;
+
 float focalPlaneDistance;
 float focalConeAngle;
 
@@ -78,7 +80,7 @@ struct Ray
 // Input data for BSDF
 struct RayHit
 {
-    bool hit;
+    float rayT;
     half orientation;
     float3 pos; 
     float3 normal;
@@ -210,7 +212,7 @@ RayHit sphere_intersection(Ray ray, Sphere sphere)
     float discriminant = b * b - 4*a*c;
     
     RayHit rayhit = (RayHit)0;
-    rayhit.hit = false;
+    rayhit.rayT = 1.#INF;
     
     if (discriminant >= 0.0f)
     {
@@ -218,7 +220,7 @@ RayHit sphere_intersection(Ray ray, Sphere sphere)
         
         if (distance > 0.0f)
         {
-            rayhit.hit = true;
+            rayhit.rayT = distance;
             rayhit.pos = ray.origin + ray.dir * distance;
             rayhit.normal = normalize(rayhit.pos - sphere.center); // outward normal
             rayhit.orientation = 1; // yeah sure whatever
@@ -282,56 +284,9 @@ RayTriangleIntersection triangle_intersection_doublesided(Ray ray, Triangle tri)
     return rayIntersection;
 }
 
-// TODO: make accept starting vlaue for distance
-RayTriangleIntersection get_ray_mesh_intersection(in Ray ray)
+void get_ray_scene_intersection_sphere(in Ray ray, inout RayHit closestHit)
 {
-    RayTriangleIntersection closestIntersection;
-    closestIntersection.rayT = 1.#INF;
-
-    float hitDistanceEpsilon = 0.0001f;
-
-    // Pre invert and cache result ray for faster intersecion testing
-    Ray ray_preInv = ray; 
-    ray_preInv.dir = 1 / ray_preInv.dir;
-
-    
-    for (int i = 0; i < (int)BufferCounts.y; i++)
-    {
-        Mesh meshData = MeshList[i];
-        if (ray_AABB_test(meshData.boundingCornerA, meshData.boundingCornerB, ray_preInv))
-        {
-            Ray localRay = convert_ray_space(ray, meshData.worldToLocal);
-            // Loop through triangles in mesh
-            for (uint tri = 0; tri < meshData.triangleCount; tri++)
-            {
-                Triangle currentTriangle = TriangleBuffer[tri + meshData.startingIndex];
-    
-                RayTriangleIntersection intersection = triangle_intersection_doublesided(localRay, currentTriangle);
-
-                intersection.rayT = length((float3) mul(meshData.localToWorld, float4(intersection.rayT * localRay.dir, 0.0f)));
-                if (intersection.rayT > hitDistanceEpsilon && intersection.rayT < closestIntersection.rayT)
-                {
-                    closestIntersection = intersection;
-                    closestIntersection.triangleIndex = uint2(i, tri);
-                }
-            }
-        }
-    }
-
-    // If  past far clip, invalidate ray (covers case where ray hits nothing)
-    if (closestIntersection.rayT > ViewParameters.w){
-        closestIntersection.rayT = -1.0f;
-    }
-
-    return closestIntersection;
-}
-
-RayHit get_ray_intersection(in Ray ray)
-{ 
-    RayHit closestIntersection;
-    closestIntersection.hit = false;
-    
-    float closestDistance = 1.#INF; // allegedly gives INF
+    float closestDistance = closestHit.rayT;
     float hitDistanceEpsilon = 0.0001f;
     
     Ray ray_preInv = ray; // Pre invert and cache result for faster intersecion testing
@@ -341,88 +296,89 @@ RayHit get_ray_intersection(in Ray ray)
         if (ray_AABB_test(SphereList[i].boundingCornerA, SphereList[i].boundingCornerB, ray_preInv))
         {
             RayHit hit = sphere_intersection(ray, SphereList[i]);
-            if (hit.hit)
+            if (hit.rayT < closestDistance && hit.rayT > hitDistanceEpsilon)
             {
-                float hitDistance = distance(ray.origin, hit.pos);
-                if (hitDistance < closestDistance && hitDistance > hitDistanceEpsilon) // Ignore hits too small
+                closestHit = hit;
+                closestDistance = hit.rayT;
+            }
+        }
+    }
+}
+
+void get_ray_scene_intersection_mesh(in Ray ray, inout RayHit closestHit)
+{
+    RayTriangleIntersection closestIntersection;
+    closestIntersection.rayT = closestHit.rayT;
+
+    float hitDistanceEpsilon = 0.0001f;
+
+    // Pre invert and cache result ray for faster intersecion testing
+    Ray ray_preInv = ray; 
+    ray_preInv.dir = 1 / ray_preInv.dir;
+    
+    // Test for ray intersection
+    for (int i = 0; i < (int)BufferCounts.y; i++)
+    {
+        Mesh meshData = MeshList[i];
+        if (ray_AABB_test(meshData.boundingCornerA, meshData.boundingCornerB, ray_preInv))
+        {
+            // Intentionally do not normalize direction to avoid converting distance back to world space
+            // as documented here: https://graphicscompendium.com/raytracing/12-transformations
+            Ray localRay = convert_ray_space_unf(ray, meshData.worldToLocal);
+            // Loop through triangles in mesh
+            for (uint tri = 0; tri < meshData.triangleCount; tri++)
+            {
+                Triangle currentTriangle = TriangleBuffer[tri + meshData.startingIndex];
+    
+                RayTriangleIntersection intersection = triangle_intersection_doublesided(localRay, currentTriangle);
+
+                // Convert distance to world space
+                //intersection.rayT = length((float3) mul(meshData.localToWorld, float4(intersection.rayT * localRay.dir, 0.0f)));
+                if (intersection.rayT > hitDistanceEpsilon && intersection.rayT < closestIntersection.rayT)
                 {
-                    closestIntersection = hit;
-                    closestDistance = hitDistance;
+                    closestIntersection = intersection;
+                    closestIntersection.triangleIndex = uint2(i, tri);
                 }
             }
         }
     }
-    
-            
 
-    RayTriangleIntersection inter = get_ray_mesh_intersection(ray);
-    if (inter.rayT > 0 && inter.rayT < closestDistance){
-        Mesh meshData = MeshList[inter.triangleIndex.x];
-        Triangle tri = TriangleBuffer[meshData.startingIndex + inter.triangleIndex.y];
-
-        closestIntersection.hit = true;
+    // Verify that triangle intersection is valid and closer than any previous intersection
+    // If so, build new RayHit 
+    if (closestIntersection.rayT < (closestHit.rayT - hitDistanceEpsilon) && closestIntersection.rayT < ViewParameters.w){
+        Mesh meshData = MeshList[closestIntersection.triangleIndex.x];
+        Triangle tri = TriangleBuffer[meshData.startingIndex + closestIntersection.triangleIndex.y];
         
-        closestIntersection.material = MaterialList[meshData.materialIndex];
+        closestHit.rayT = closestIntersection.rayT;
+        
+        closestHit.material = MaterialList[meshData.materialIndex];
 
-        closestIntersection.orientation = inter.orientation;
+        closestHit.orientation = closestIntersection.orientation;
 
         // For reasons unknown to me barycentric coordinates are layed out relative to verticies in the pattern wuv as opposed to uvw, no I don't know why, just roll with it
-        closestIntersection.normal = tri.n0 * inter.baryCoords.z + tri.n1 * inter.baryCoords.x + tri.n2 * inter.baryCoords.y; // TODO: Figure out why this works again?
-        //closestIntersection.normal = (tri.n0 + (tri.n1 - tri.n0) * inter.baryCoords.x + (tri.n2 - tri.n0) * inter.baryCoords.y);
-
-        closestIntersection.normal = closestIntersection.normal * closestIntersection.orientation; // flip normal to make doublesided if hit backface
+        closestHit.normal = (tri.n0 + (tri.n1 - tri.n0) * closestIntersection.baryCoords.x + (tri.n2 - tri.n0) * closestIntersection.baryCoords.y); // Works a bit like the lerp function but with three values
+        //hit.normal = tri.n0 * closestIntersection.baryCoords.z + tri.n1 * closestIntersection.baryCoords.x + tri.n2 * closestIntersection.baryCoords.y; 
+        closestHit.normal = closestHit.normal * closestIntersection.orientation; // flip normal to make doublesided if hit backface
         // multiply by inverse transpose of matrix to get correct normal scaling https://forum.unity.com/threads/world-space-normal.58810/
-        closestIntersection.normal = normalize(mul(float4(closestIntersection.normal, 0.0), meshData.worldToLocal).xyz); 
+        closestHit.normal = normalize(mul(float4(closestHit.normal, 0.0), meshData.worldToLocal).xyz); 
         //closestIntersection.normal = normalize((float3) mul(meshData.localToWorld, float4(closestIntersection.normal, 0.0f)));
 
-        closestIntersection.pos = ray.origin + (ray.dir * inter.rayT)
-             + closestIntersection.normal * 0.0001; // offset from intersection for floating point reasons
-
-        closestDistance = inter.rayT;
+        closestHit.pos = ray.origin + (ray.dir * closestIntersection.rayT)
+             + closestHit.normal * 0.0001; // offset from intersection for floating point reasons
     }
+}
 
-    // for (int i = 0; i < (int)BufferCounts.y; i++)
-    // {
-    //     Mesh meshData = MeshList[i];
-    //     if (ray_AABB_test(meshData.boundingCornerA, meshData.boundingCornerB, ray_preInv))
-    //     {
-    //         Ray localRay = convert_ray_space_unf(ray, meshData.worldToLocal);
-    //         // Loop through triangles in mesh
-    //         for (uint tri = 0; tri < meshData.triangleCount; tri++)
-    //         {
-    //             float2 baryCoords = float3(0, 0, 0);
-    //             Triangle currentTriangle = TriangleBuffer[tri + meshData.startingIndex];
+RayHit get_ray_intersection(in Ray ray)
+{ 
+    RayHit closestHit;
+    closestHit.rayT = 1.#INF; // Start with infinitely far away intersection
     
-    //             RayHit hit = triangle_intersection_doublesided(localRay, currentTriangle, baryCoords);
-    //             if (hit.hit)
-    //             {
-    //                 float hitDistance = distance(localRay.origin, hit.pos);
-    //                 if (hitDistance < closestDistance && hitDistance > hitDistanceEpsilon)
-    //                 {
-    //                     closestIntersection = hit;
-                        
-    //                     // Finish filling hit struct
-    //                     //closestIntersection.normal = mul(baryCoords, float3x3(currentTriangle.n0, currentTriangle.n1, currentTriangle.n2));
-    //                     closestIntersection.normal = (currentTriangle.n0 + (currentTriangle.n1 - currentTriangle.n0) * baryCoords.x + (currentTriangle.n2 - currentTriangle.n0) * baryCoords.y);
-    //                     closestIntersection.normal = closestIntersection.normal * closestIntersection.orientation; // flip normal to make doublesided if hit backface
-    //                     closestIntersection.material = MaterialList[meshData.materialIndex];
-                        
-    //                     // This is not clean code probably
-    //                     closestIntersection.pos = (float3) mul(meshData.localToWorld, float4(closestIntersection.pos, 1.0f));
-    //                     closestIntersection.normal = (float3) mul(meshData.localToWorld, float4(closestIntersection.normal, 0.0f));
-                        
-    //                     closestDistance = hitDistance;
-    //                 } 
-    //             }
-    //         }
-    //     }
-    // }
+    get_ray_scene_intersection_sphere(ray, closestHit);
+            
+    get_ray_scene_intersection_mesh(ray, closestHit);
 
-    
-    
-    //determine_frontface(closestIntersection, ray.dir);
     //closestIntersection.material.albedo = float4(closestDistance / 5, 0, 0, 0.0f);
-    return closestIntersection;
+    return closestHit;
 }
 
 // Always scatters
@@ -482,6 +438,36 @@ float3 material_BRDF(inout Ray ray, in RayHit hit)
     return attenuation;
 }
 
+float3 trace_ray_debug_albedo(in Ray ray)
+{
+    RayHit hit = get_ray_intersection(ray);
+
+    // Verify ray hit something, if distance to hit is less than far plane
+    if (hit.rayT < ViewParameters.w)
+    {
+        return hit.material.albedo;
+    }
+    else
+    {
+        return sample_sky(ray);
+    }
+}
+
+float3 trace_ray_debug_normal(in Ray ray)
+{
+    RayHit hit = get_ray_intersection(ray);
+
+    // Verify ray hit something, if distance to hit is less than far plane
+    if (hit.rayT < ViewParameters.w)
+    {
+        return (hit.normal + 1) / 2;
+    }
+    else
+    {
+        return sample_sky(ray);
+    }
+}
+
 // Iterative method documented here: https://www.cs.uaf.edu/2012/spring/cs481/section/0/lecture/02_07_recursion_reflection.html
 float3 trace_ray(in Ray ray)
 {
@@ -497,7 +483,8 @@ float3 trace_ray(in Ray ray)
         
         RayHit hit = get_ray_intersection(ray);
         
-        if (hit.hit)
+        // Verify ray hit something, if distance to hit is less than far plane
+        if (hit.rayT < ViewParameters.w)
         {
             // Scatters ray with diffuse BRDF
             float3 attenuation = material_BRDF(ray, hit); // attenuates and scatters
@@ -567,7 +554,19 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
     for (uint rayID = 0; rayID < SamplesPerPixel; rayID++)
     {
         Ray ray = get_ray(uvNDC);
-        RayColor += trace_ray(ray);
+        
+        switch (DebugMode){
+            default:
+                RayColor += trace_ray(ray);
+                break;
+            case 1:
+                RayColor += trace_ray_debug_albedo(ray);
+                break;
+            case 2:
+                RayColor += trace_ray_debug_normal(ray);
+                break;
+        }
+        
 
         // Debug mesh bounding boxes
         //Ray ray_preInv = ray;
@@ -579,7 +578,6 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
         //        RayColor += MaterialList[MeshList[k].materialIndex].albedo * 0.5f;
         //    }
         //}
-    
     }
     RayColor = RayColor * rayScale;
 

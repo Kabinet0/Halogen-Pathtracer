@@ -79,6 +79,8 @@ public class HalogenRenderPass : ScriptableRenderPass
     float FocalPlaneDistance;
     float ApertureAngle;
 
+    int DebugMode;
+
     Material AccumulationMaterial;
     Vector3 PriorCameraPosition;
     Quaternion PriorCameraRotation;
@@ -146,6 +148,21 @@ public class HalogenRenderPass : ScriptableRenderPass
         AccumulationBufferDirty = true;
         AccumulationMaterial = CoreUtils.CreateEngineMaterial(_settings.AccumulationShader);
 
+        switch (_settings.DebugMode)
+        {
+            case HalogenDebugMode.None:
+                DebugMode = 0;
+                break;
+            case HalogenDebugMode.Albedo:
+                DebugMode = 1;
+                break;
+            case HalogenDebugMode.Normal:
+                DebugMode = 2;
+                break;
+            default:
+                DebugMode = 0;
+                break;
+        }
         //settings = _settings;
     }
 
@@ -238,6 +255,7 @@ public class HalogenRenderPass : ScriptableRenderPass
             cmd.SetComputeVectorParam(halogenShader, "BufferCounts", new Vector4(sphereList.Count, meshList.Count, 0, 0));
             cmd.SetComputeIntParam(halogenShader, "SamplesPerPixel", SamplesPerPixel);
             cmd.SetComputeIntParam(halogenShader, "MaxBounces", MaxBounces);
+            cmd.SetComputeIntParam(halogenShader, "DebugMode", DebugMode);
 
             cmd.SetComputeFloatParam(halogenShader, "focalPlaneDistance", FocalPlaneDistance);
             cmd.SetComputeFloatParam(halogenShader, "focalConeAngle", ApertureAngle);
@@ -347,7 +365,7 @@ public class HalogenRenderPass : ScriptableRenderPass
             numTrianglesAdded += mesh.GetTriangleCount();
         }
 
-        Debug.Log("Number of meshes loaded for raytracing: " + meshList.Count);
+        //Debug.Log("Number of meshes loaded for raytracing: " + meshList.Count);
 
         ReallocateComputeBufferIfNeeded(ref sphereBuffer, sphereList.Count, sphereStructStride);
         ReallocateComputeBufferIfNeeded(ref meshBuffer, meshList.Count, meshStructStride);
