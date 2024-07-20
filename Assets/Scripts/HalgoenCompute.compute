@@ -29,7 +29,9 @@ RWTexture2D<float4> OutputSecondBounce;
 uint SamplesPerPixel;
 uint MaxBounces;
 
-uint DebugMode;
+uint HalogenDebugMode;
+uint TriangleDebugDisplayRange;
+uint BoxDebugDisplayRange;
 
 float focalPlaneDistance;
 float focalConeAngle;
@@ -62,6 +64,14 @@ struct Mesh
     float4x4 worldToLocal;
     float4x4 localToWorld;
     // float4x4 normalMatrix; // if desired
+};
+
+struct BVHEntry
+{
+    uint indexA;
+    uint triangleCount;
+    float3 boundingCornerA;
+    float3 boundingCornerB;
 };
 
 struct Triangle
@@ -98,9 +108,12 @@ struct RayTriangleIntersection
     half orientation;
 };
 
-float3 DiffuseSecondBounce = float3(0, 0, 0);
+// Debugging variables
+int TriangleTests = 0;
+int AABBTests = 0;
 
 StructuredBuffer<Triangle> TriangleBuffer;
+StructuredBuffer<BVHEntry> BLASBuffer;
 StructuredBuffer<HalogenMaterial> MaterialList;
 StructuredBuffer<Sphere> SphereList;
 StructuredBuffer<Mesh> MeshList;
@@ -331,16 +344,18 @@ void get_ray_scene_intersection_mesh(in Ray ray, inout RayHit closestHit)
                 Triangle currentTriangle = TriangleBuffer[tri + meshData.startingIndex];
     
                 RayTriangleIntersection intersection = triangle_intersection_doublesided(localRay, currentTriangle);
+                TriangleTests++;
 
                 // Convert distance to world space
                 //intersection.rayT = length((float3) mul(meshData.localToWorld, float4(intersection.rayT * localRay.dir, 0.0f)));
                 if (intersection.rayT > hitDistanceEpsilon && intersection.rayT < closestIntersection.rayT)
                 {
                     closestIntersection = intersection;
-                    closestIntersection.triangleIndex = uint2(i, tri);
+                    closestIntersection.triangleIndex = uint2(i, tri); // consider cleaner way?
                 }
             }
         }
+        AABBTests++;
     }
 
     // Verify that triangle intersection is valid and closer than any previous intersection
@@ -438,33 +453,61 @@ float3 material_BRDF(inout Ray ray, in RayHit hit)
     return attenuation;
 }
 
-float3 trace_ray_debug_albedo(in Ray ray)
+float3 trace_ray_debug_albedo(in Ray ray, in RayHit hit)
 {
-    RayHit hit = get_ray_intersection(ray);
-
     // Verify ray hit something, if distance to hit is less than far plane
-    if (hit.rayT < ViewParameters.w)
-    {
+    if (hit.rayT < ViewParameters.w) {
         return hit.material.albedo;
     }
-    else
-    {
+    else {
         return sample_sky(ray);
     }
 }
 
-float3 trace_ray_debug_normal(in Ray ray)
+float3 trace_ray_debug_normal(in Ray ray, in RayHit hit)
 {
-    RayHit hit = get_ray_intersection(ray);
-
-    // Verify ray hit something, if distance to hit is less than far plane
-    if (hit.rayT < ViewParameters.w)
-    {
+    // Verify ray hit something, if distance to hit is less than far plane10
+    if (hit.rayT < ViewParameters.w) {
         return (hit.normal + 1) / 2;
     }
-    else
-    {
+    else {
         return sample_sky(ray);
+    }
+}
+
+float3 trace_ray_debug_combined_intersections(in RayHit hit)
+{
+    float3 outputColor = float3(TriangleTests / (float)TriangleDebugDisplayRange, 0, AABBTests / (float)BoxDebugDisplayRange);
+    if (TriangleTests > TriangleDebugDisplayRange || AABBTests > BoxDebugDisplayRange) {
+        outputColor = float3(1,1,1);
+    }
+    return outputColor;
+}
+
+float3 trace_ray_debug(in Ray ray)
+{
+    // Reset debugging data 
+    TriangleTests = 0;
+    AABBTests = 0;
+
+    // Do ray intersection OUTSIDE of debug switch, or else the compiler inlines and optimizes so agressively that
+    // some debug modes won't even perform triangle tests, which messes with performance data.
+    RayHit hit = get_ray_intersection(ray);
+
+    
+    switch (HalogenDebugMode){
+        default:
+            return float3(0, 0, 0);
+        case 1:
+            return trace_ray_debug_albedo(ray, hit);
+        case 2:
+            return trace_ray_debug_normal(ray, hit);
+        case 3:
+            return float3(TriangleTests / (float)TriangleDebugDisplayRange, 0, 0);
+        case 4:
+            return float3(AABBTests / (float)BoxDebugDisplayRange, 0, 0);
+        case 5:
+            return trace_ray_debug_combined_intersections(hit);
     }
 }
 
@@ -472,11 +515,11 @@ float3 trace_ray_debug_normal(in Ray ray)
 float3 trace_ray(in Ray ray)
 {
     float3 AccumulatedColor = float3(0, 0, 0);
-    float3 lightAttenuation = float3(1, 1, 1); // If something looks weird, add "precise" here
+    float3 LightAttenuation = float3(1, 1, 1); // If something looks weird, add "precise" here
     
     for (uint rayInteractions = 0; rayInteractions <= MaxBounces; rayInteractions++)
     {
-        if (length(lightAttenuation) < 0.05f)
+        if (length(LightAttenuation) < 0.05f)
         {
             break;
         }
@@ -492,15 +535,13 @@ float3 trace_ray(in Ray ray)
             
             float3 emissive = hit.material.emissive.rgb * hit.material.emissive.a;
             
-            AccumulatedColor += emissive * lightAttenuation;
-            lightAttenuation *= attenuation; 
+            AccumulatedColor += emissive * LightAttenuation;
+            LightAttenuation *= attenuation; 
             
-
-            DiffuseSecondBounce += emissive * lightAttenuation * (rayInteractions > 0);
         }
         else
         {
-            AccumulatedColor += sample_sky(ray) * lightAttenuation; // Emissive
+            AccumulatedColor += sample_sky(ray) * LightAttenuation; // Emissive
             break;
         }
     }
@@ -547,24 +588,16 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
     float2 uvNDC = uv * 2.0f - 1.0f;
     randomState = (id.x + id.y * ScreenParameters.x) * RandomSeed;
     
-
-    float rayScale = 1.0f / SamplesPerPixel;
     float3 RayColor = float3(0.0f, 0.0f, 0.0f);
 
     for (uint rayID = 0; rayID < SamplesPerPixel; rayID++)
     {
         Ray ray = get_ray(uvNDC);
         
-        switch (DebugMode){
-            default:
-                RayColor += trace_ray(ray);
-                break;
-            case 1:
-                RayColor += trace_ray_debug_albedo(ray);
-                break;
-            case 2:
-                RayColor += trace_ray_debug_normal(ray);
-                break;
+        if (HalogenDebugMode < 1){
+            RayColor += trace_ray(ray);
+        }else{
+            RayColor += trace_ray_debug(ray);
         }
         
 
@@ -579,9 +612,7 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
         //    }
         //}
     }
-    RayColor = RayColor * rayScale;
+    RayColor = RayColor / (float)SamplesPerPixel;
 
     Output[id.xy] = float4(RayColor, 1.0f);
-    OutputSecondBounce[id.xy] = float4(DiffuseSecondBounce * rayScale, 1.0f);
-
 }

@@ -49,15 +49,13 @@ public struct HalogenTriangle
     public Vector3 normalC;
 }
 
-public struct BVHEntry
+public struct BVHEntry // 32 byte struct, so probably cache aligned :D
 {
-    public uint childIdxA;
-    public uint childIdxB;
+    public uint indexA; // triangle start if leaf node, index to first child if hierarchy node
+    public uint triangleCount; // triangle count. If greater than zero this is a leaf node 
 
     public Vector3 boundingCornerA;
     public Vector3 boundingCornerB;
-
-    public bool isLeafNode;
 }
 
 // Useful
@@ -79,7 +77,9 @@ public class HalogenRenderPass : ScriptableRenderPass
     float FocalPlaneDistance;
     float ApertureAngle;
 
-    int DebugMode;
+    int HalogenDebugMode;
+    int TriangleDebugDisplayRange;
+    int BoxDebugDisplayRange;
 
     Material AccumulationMaterial;
     Vector3 PriorCameraPosition;
@@ -102,6 +102,7 @@ public class HalogenRenderPass : ScriptableRenderPass
     List<HalogenMeshData> meshList = new List<HalogenMeshData>();
     List<PackedHalogenMaterial> materialList = new List<PackedHalogenMaterial>();
     List<HalogenTriangle> triangleList = new List<HalogenTriangle>();
+    List<BVHEntry> BLASList = new List<BVHEntry>();
 
     private readonly int sphereStructStride;
 
@@ -150,19 +151,28 @@ public class HalogenRenderPass : ScriptableRenderPass
 
         switch (_settings.DebugMode)
         {
-            case HalogenDebugMode.None:
-                DebugMode = 0;
-                break;
-            case HalogenDebugMode.Albedo:
-                DebugMode = 1;
-                break;
-            case HalogenDebugMode.Normal:
-                DebugMode = 2;
-                break;
             default:
-                DebugMode = 0;
+                HalogenDebugMode = 0;
+                break;
+            case global::HalogenDebugMode.Albedo:
+                HalogenDebugMode = 1;
+                break;
+            case global::HalogenDebugMode.Normal:
+                HalogenDebugMode = 2;
+                break;
+            case global::HalogenDebugMode.RayTriangleTests:
+                HalogenDebugMode = 3;
+                break;
+            case global::HalogenDebugMode.RayBoxTests:
+                HalogenDebugMode = 4;
+                break;
+            case global::HalogenDebugMode.Combined:
+                HalogenDebugMode = 5;
                 break;
         }
+
+        TriangleDebugDisplayRange = Mathf.Max(_settings.TriangleDebugDisplayRange, 1);
+        BoxDebugDisplayRange = Mathf.Max(_settings.BoxDebugDisplayRange, 1);
         //settings = _settings;
     }
 
@@ -255,11 +265,14 @@ public class HalogenRenderPass : ScriptableRenderPass
             cmd.SetComputeVectorParam(halogenShader, "BufferCounts", new Vector4(sphereList.Count, meshList.Count, 0, 0));
             cmd.SetComputeIntParam(halogenShader, "SamplesPerPixel", SamplesPerPixel);
             cmd.SetComputeIntParam(halogenShader, "MaxBounces", MaxBounces);
-            cmd.SetComputeIntParam(halogenShader, "DebugMode", DebugMode);
+
+            // Debugging parameters
+            cmd.SetComputeIntParam(halogenShader, "HalogenDebugMode", HalogenDebugMode);
+            cmd.SetComputeIntParam(halogenShader, "TriangleDebugDisplayRange", TriangleDebugDisplayRange);
+            cmd.SetComputeIntParam(halogenShader, "BoxDebugDisplayRange", BoxDebugDisplayRange);
 
             cmd.SetComputeFloatParam(halogenShader, "focalPlaneDistance", FocalPlaneDistance);
             cmd.SetComputeFloatParam(halogenShader, "focalConeAngle", ApertureAngle);
-            //Debug.Log("AA: " + FocalPlaneDistance + " " +  ApertureAngle);
 
             cmd.SetComputeTextureParam(halogenShader, kernelIndex, "Output", rtPathtracingBuffer);
             cmd.SetComputeTextureParam(halogenShader, kernelIndex, "OutputSecondBounce", rtSecondBounceBuffer);
@@ -331,7 +344,7 @@ public class HalogenRenderPass : ScriptableRenderPass
         meshList.Clear();
         materialList.Clear();
         triangleList.Clear();
-
+        BLASList.Clear();
 
         // Fill sphere list
         foreach (RayTracingSphere sphere in RayTracingManager.GetSphereList().Values){
@@ -349,20 +362,25 @@ public class HalogenRenderPass : ScriptableRenderPass
         }
 
         // Fill mesh related lists
-        uint numTrianglesAdded = 0;
+        int numTrianglesAdded = 0;
+        int numBVHEntriesAdded = 0;
         foreach (RayTracingMesh mesh in RayTracingManager.GetMeshList().Values)
         {
             // Add to material list & get index
             uint materialIndex = AddMaterialToList(PackHalogenMaterial(mesh.material));
 
             // Copy triangles from mesh into list
-            mesh.InsertToTriangleBuffer(ref triangleList, numTrianglesAdded);
+            triangleList.InsertRange(numTrianglesAdded, mesh.GetPackedTriangles());
 
             // Copy mesh data into array
-            meshList.Add(mesh.GetRefreshedMeshData(materialIndex, numTrianglesAdded));
+            meshList.Add(mesh.GetRefreshedMeshData(materialIndex, (uint)numTrianglesAdded));
+
+            // buh
+            BLASList.InsertRange(numBVHEntriesAdded, mesh.GetBVH());
 
             // Increment number of triangles added
             numTrianglesAdded += mesh.GetTriangleCount();
+            numBVHEntriesAdded += mesh.GetBVH().Count;
         }
 
         //Debug.Log("Number of meshes loaded for raytracing: " + meshList.Count);
@@ -371,11 +389,13 @@ public class HalogenRenderPass : ScriptableRenderPass
         ReallocateComputeBufferIfNeeded(ref meshBuffer, meshList.Count, meshStructStride);
         ReallocateComputeBufferIfNeeded(ref materialBuffer, materialList.Count, materialStructStride);
         ReallocateComputeBufferIfNeeded(ref triangleBuffer, triangleList.Count, triangleStructStride);
+        ReallocateComputeBufferIfNeeded(ref BLASBuffer, BLASList.Count, BVHEntryStructStride);
 
         cmd.SetBufferData(sphereBuffer, sphereList);
         cmd.SetBufferData(meshBuffer, meshList);
         cmd.SetBufferData(materialBuffer, materialList);
         cmd.SetBufferData(triangleBuffer, triangleList);
+        cmd.SetBufferData(BLASBuffer, BLASList);
     }
 
     uint AddMaterialToList(PackedHalogenMaterial material)

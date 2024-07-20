@@ -55,13 +55,15 @@ MonoBehaviour:
     ShowInSceneView: 1
     Accumulate: 1
     SamplesPerPixel: 1
-    MaxBounces: 3
+    MaxBounces: 2
     NearPlaneDistance: 0.1
     FarPlaneDistance: 5000
-    FocalPlaneDistance: 5.36
+    FocalPlaneDistance: 1.82
     ApertureAngle: 0
     DebugMode: 0
     BoundsDebugMode: 0
+    TriangleDebugDisplayRange: 8853
+    BoxDebugDisplayRange: 6
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

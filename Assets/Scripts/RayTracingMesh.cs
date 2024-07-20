@@ -11,12 +11,23 @@ public class RayTracingMesh : MonoBehaviour
     private readonly float AABBEpsilon = 0.00001f;
 
     public HalogenMaterial material = new HalogenMaterial(Color.white); // Silly C# 9
+
+    [Header("Acceleration Structure Parameters")]
+    public int HierarchyDepth = 1;
+
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
 
     // Cached mesh information
-    private HalogenTriangle[] triangleList;
+    private HalogenTriangle[] halogenTriangleList;
     private HalogenMeshData meshData = new HalogenMeshData();
+
+    private List<BVHEntry> meshBVH = new List<BVHEntry>();
+
+    // Cached raw meshdata
+    private List<Vector3> verticies = new List<Vector3>();
+    private List<int> triangles = new List<int>();
+    private List<Vector3> normals = new List<Vector3>();
 
     // Unique ID
     private uint id = 0;
@@ -27,7 +38,7 @@ public class RayTracingMesh : MonoBehaviour
         meshFilter = GetComponent<MeshFilter>();
         meshRenderer = GetComponent<MeshRenderer>();
 
-        CacheTriangleList();
+        CacheRaytracingData();
     }
 
     void OnDisable()
@@ -35,24 +46,42 @@ public class RayTracingMesh : MonoBehaviour
         RayTracingManager.RemoveFromMeshList(this);
     }
 
-    private void CacheTriangleList()
+    private void CacheRaytracingData()
     {
         Mesh objectMesh = meshFilter.sharedMesh;
-        triangleList = new HalogenTriangle[objectMesh.triangles.Length / 3];
-        
-        for (int i = 0; i < triangleList.Length; i++) {
-            
-            HalogenTriangle tri = new HalogenTriangle();
-            tri.pointA = objectMesh.vertices[objectMesh.triangles[i * 3]];
-            tri.pointB = objectMesh.vertices[objectMesh.triangles[(i * 3) + 1]];
-            tri.pointC = objectMesh.vertices[objectMesh.triangles[(i * 3) + 2]];
 
-            tri.normalA = objectMesh.normals[objectMesh.triangles[i * 3]];
-            tri.normalB = objectMesh.normals[objectMesh.triangles[(i * 3) + 1]];
-            tri.normalC = objectMesh.normals[objectMesh.triangles[(i * 3) + 2]];
+        // For performance reasons copying these over locally is VERY important
+        // Unity meshes are on the native side and these properties are NOT C# arrays we can just reference
+        // Each access is more like a memory copy to a newly instanciated array in managed code, just for this one purpose, and accessing these in a loop would be insane
+        // Better yet use .GetVerticies() with an argument to just populate an array you manage instead of allocating a new one
 
-            triangleList[i] = tri;
+        objectMesh.GetTriangles(triangles, 0);
+        objectMesh.GetVertices(verticies);
+        objectMesh.GetNormals(normals);
+
+        // Must run first since it reorders mesh data
+        BVHGenerator.GenerateMeshBVH(this); 
+
+        UpdateTriangleList();
+    }
+
+    private void UpdateTriangleList()
+    {
+        halogenTriangleList = new HalogenTriangle[triangles.Count / 3];
+        //Debug.Log("Allocating " + triangles.Length / 3 + " triangles, what should be " + (72 * triangles.Length / 3) + " bytes");
+
+        for (int i = 0; i < halogenTriangleList.Length; i++)
+        {
+            halogenTriangleList[i].pointA = verticies[triangles[i * 3]];
+            halogenTriangleList[i].pointB = verticies[triangles[(i * 3) + 1]];
+            halogenTriangleList[i].pointC = verticies[triangles[(i * 3) + 2]];
+
+            halogenTriangleList[i].normalA = normals[triangles[i * 3]];
+            halogenTriangleList[i].normalB = normals[triangles[(i * 3) + 1]];
+            halogenTriangleList[i].normalC = normals[triangles[(i * 3) + 2]];
         }
+
+        //Debug.Log("Done");
     }
 
     public HalogenMeshData GetRefreshedMeshData(uint materialIndex, uint startingTriangleIndex)
@@ -72,28 +101,52 @@ public class RayTracingMesh : MonoBehaviour
         return meshData;
     }
 
-    public void InsertToTriangleBuffer(ref List<HalogenTriangle> triangleBuffer, uint startingIndex)
-    {
-        triangleBuffer.InsertRange((int)startingIndex, triangleList);
-    }
-
     public Bounds GetBounds()
     {
         var bounds = meshRenderer.bounds;
 
-
-        // Ensure AABB is at least of a certain size
+        // Ensure AABB is at least of a certain size, to make sure planes still render
         if (bounds.size.x < AABBEpsilon || bounds.size.y < AABBEpsilon || bounds.size.z < AABBEpsilon)
         {
             bounds.max += Vector3.one * AABBEpsilon;
         }
-        //bs = bounds.size;
+
         return bounds;
     }
 
-    public uint GetTriangleCount()
+    public Mesh GetMesh()
     {
-        return (uint)triangleList.Length;
+        return meshFilter.sharedMesh;
+    }
+
+    public int GetTriangleCount()
+    {
+        return triangles.Count / 3;
+    }
+
+    public HalogenTriangle[] GetPackedTriangles()
+    {
+        return halogenTriangleList;
+    }
+
+    public List<Vector3> GetVerticies()
+    {
+        return verticies;
+    }
+
+    public List<int> GetTriangles()
+    {
+        return triangles;
+    }
+
+    public List<Vector3> GetNormals()
+    {
+        return normals;
+    }
+
+    public List<BVHEntry> GetBVH()
+    {
+        return meshBVH;
     }
 
     public uint GetID()

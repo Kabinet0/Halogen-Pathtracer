@@ -5,7 +5,10 @@ using UnityEngine;
 public enum HalogenDebugMode {
     None,
     Albedo,
-    Normal
+    Normal,
+    RayTriangleTests,
+    RayBoxTests,
+    Combined
 }
 
 public enum HalogenMeshBoundsDebugMode
@@ -41,6 +44,8 @@ public struct HalogenSettings
     
     public HalogenDebugMode DebugMode;
     public HalogenMeshBoundsDebugMode BoundsDebugMode;
+    public int TriangleDebugDisplayRange;
+    public int BoxDebugDisplayRange;
 } 
 
 [DisallowMultipleRendererFeature]
