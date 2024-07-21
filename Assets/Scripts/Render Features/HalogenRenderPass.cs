@@ -18,8 +18,8 @@ public struct HalogenSphere
 
 public struct HalogenMeshData
 {
-    public uint startingIndex;
-    public uint triangleCount;
+    public uint triangleBufferOffset;
+    public uint accelerationBufferOffset;
 
     public Vector3 boundingCornerA;
     public Vector3 boundingCornerB;
@@ -49,6 +49,7 @@ public struct HalogenTriangle
     public Vector3 normalC;
 }
 
+[System.Serializable]
 public struct BVHEntry // 32 byte struct, so probably cache aligned :D
 {
     public uint indexA; // triangle start if leaf node, index to first child if hierarchy node
@@ -143,16 +144,16 @@ public class HalogenRenderPass : ScriptableRenderPass
 
         ApertureAngle = Mathf.Clamp(_settings.ApertureAngle, 0, 89.9f);
 
-        Accumulate = _settings.Accumulate;
-
         FrameCount = 1;
         AccumulationBufferDirty = true;
         AccumulationMaterial = CoreUtils.CreateEngineMaterial(_settings.AccumulationShader);
 
+        Accumulate = false;
         switch (_settings.DebugMode)
         {
             default:
                 HalogenDebugMode = 0;
+                Accumulate = _settings.Accumulate; // If no debug mode is active, use accumulate setting value
                 break;
             case global::HalogenDebugMode.Albedo:
                 HalogenDebugMode = 1;
@@ -259,6 +260,7 @@ public class HalogenRenderPass : ScriptableRenderPass
             cmd.SetComputeBufferParam(halogenShader, kernelIndex, "SphereList", sphereBuffer);
             cmd.SetComputeBufferParam(halogenShader, kernelIndex, "MaterialList", materialBuffer);
             cmd.SetComputeBufferParam(halogenShader, kernelIndex, "TriangleBuffer", triangleBuffer);
+            cmd.SetComputeBufferParam(halogenShader, kernelIndex, "BLASBuffer", BLASBuffer);
 
             cmd.SetComputeIntParam(halogenShader, "RandomSeed", Accumulate ? FrameCount : 1);
 
@@ -372,10 +374,10 @@ public class HalogenRenderPass : ScriptableRenderPass
             // Copy triangles from mesh into list
             triangleList.InsertRange(numTrianglesAdded, mesh.GetPackedTriangles());
 
-            // Copy mesh data into array
-            meshList.Add(mesh.GetRefreshedMeshData(materialIndex, (uint)numTrianglesAdded));
+            // Copy mesh data into list
+            meshList.Add(mesh.GetRefreshedMeshData(materialIndex, (uint)numTrianglesAdded, (uint)numBVHEntriesAdded));
 
-            // buh
+            // Copy BVH data into list
             BLASList.InsertRange(numBVHEntriesAdded, mesh.GetBVH());
 
             // Increment number of triangles added

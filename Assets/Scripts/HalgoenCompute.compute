@@ -56,8 +56,8 @@ struct Sphere
 
 struct Mesh
 {
-    uint startingIndex;
-    uint triangleCount;
+    uint triangleBufferOffset;
+    uint accelerationBufferOffset;
     float3 boundingCornerA;
     float3 boundingCornerB;
     uint materialIndex;
@@ -333,36 +333,61 @@ void get_ray_scene_intersection_mesh(in Ray ray, inout RayHit closestHit)
     for (int i = 0; i < (int)BufferCounts.y; i++)
     {
         Mesh meshData = MeshList[i];
-        if (ray_AABB_test(meshData.boundingCornerA, meshData.boundingCornerB, ray_preInv))
-        {
-            // Intentionally do not normalize direction to avoid converting distance back to world space
-            // as documented here: https://graphicscompendium.com/raytracing/12-transformations
-            Ray localRay = convert_ray_space_unf(ray, meshData.worldToLocal);
-            // Loop through triangles in mesh
-            for (uint tri = 0; tri < meshData.triangleCount; tri++)
-            {
-                Triangle currentTriangle = TriangleBuffer[tri + meshData.startingIndex];
-    
-                RayTriangleIntersection intersection = triangle_intersection_doublesided(localRay, currentTriangle);
-                TriangleTests++;
 
-                // Convert distance to world space
-                //intersection.rayT = length((float3) mul(meshData.localToWorld, float4(intersection.rayT * localRay.dir, 0.0f)));
-                if (intersection.rayT > hitDistanceEpsilon && intersection.rayT < closestIntersection.rayT)
+       
+        // Intentionally do not normalize direction to avoid converting distance back to world space
+        // as documented here: https://graphicscompendium.com/raytracing/12-transformations
+        Ray localRay = convert_ray_space_unf(ray, meshData.worldToLocal);
+        // Pre invert and cache local ray for BVH AABB testing, normalize direction to not mess with intersection test math
+        Ray localRay_preInv = localRay;
+        localRay_preInv.dir = 1 / normalize(localRay_preInv.dir);
+
+        int NodeStack[32];
+        int stackPointer = 0;
+
+        // Push first node to stack, can skip first node once TLAS exists
+        NodeStack[stackPointer++] = meshData.accelerationBufferOffset;
+
+        while (stackPointer > 0) {
+            // pop out current node being processed
+            BVHEntry currentNode = BLASBuffer[NodeStack[--stackPointer]];
+
+            if (currentNode.triangleCount > 0) { // this node is a leaf node
+                // Intersect through triangles in leaf node
+                for (uint tri = 0; tri < currentNode.triangleCount; tri++)
                 {
-                    closestIntersection = intersection;
-                    closestIntersection.triangleIndex = uint2(i, tri); // consider cleaner way?
+                    RayTriangleIntersection intersection = triangle_intersection_doublesided(localRay, TriangleBuffer[tri + meshData.triangleBufferOffset + currentNode.indexA]);
+                    TriangleTests++;
+
+                    // Convert distance to world space
+                    //intersection.rayT = length((float3) mul(meshData.localToWorld, float4(intersection.rayT * localRay.dir, 0.0f)));
+                    if (intersection.rayT > hitDistanceEpsilon && intersection.rayT < closestIntersection.rayT)
+                    {
+                        closestIntersection = intersection;
+                        closestIntersection.triangleIndex = uint2(i, tri + currentNode.indexA); // consider cleaner way?
+                    }
                 }
+            } else{ // this node is a hierarchy node
+                BVHEntry childNodeA = BLASBuffer[currentNode.indexA];
+                BVHEntry childNodeB = BLASBuffer[currentNode.indexA + 1];
+
+                if (ray_AABB_test(childNodeA.boundingCornerA, childNodeA.boundingCornerB, localRay_preInv)){
+                    NodeStack[stackPointer++] = currentNode.indexA;
+                }
+                if (ray_AABB_test(childNodeB.boundingCornerA, childNodeB.boundingCornerB, localRay_preInv)){
+                    NodeStack[stackPointer++] = currentNode.indexA + 1;
+                }
+                AABBTests += 2;
             }
         }
-        AABBTests++;
+        
     }
 
     // Verify that triangle intersection is valid and closer than any previous intersection
     // If so, build new RayHit 
     if (closestIntersection.rayT < (closestHit.rayT - hitDistanceEpsilon) && closestIntersection.rayT < ViewParameters.w){
         Mesh meshData = MeshList[closestIntersection.triangleIndex.x];
-        Triangle tri = TriangleBuffer[meshData.startingIndex + closestIntersection.triangleIndex.y];
+        Triangle tri = TriangleBuffer[meshData.triangleBufferOffset + closestIntersection.triangleIndex.y];
         
         closestHit.rayT = closestIntersection.rayT;
         

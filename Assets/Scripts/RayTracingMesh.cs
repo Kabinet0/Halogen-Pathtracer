@@ -22,7 +22,7 @@ public class RayTracingMesh : MonoBehaviour
     private HalogenTriangle[] halogenTriangleList;
     private HalogenMeshData meshData = new HalogenMeshData();
 
-    private List<BVHEntry> meshBVH = new List<BVHEntry>();
+    [SerializeField] private List<BVHEntry> meshBVH = new List<BVHEntry>();
 
     // Cached raw meshdata
     private List<Vector3> verticies = new List<Vector3>();
@@ -84,15 +84,15 @@ public class RayTracingMesh : MonoBehaviour
         //Debug.Log("Done");
     }
 
-    public HalogenMeshData GetRefreshedMeshData(uint materialIndex, uint startingTriangleIndex)
+    public HalogenMeshData GetRefreshedMeshData(uint materialIndex, uint startingTriangleIndex, uint accelerationStartingIndex)
     {
         Bounds meshBounds = GetBounds();
 
         meshData.boundingCornerA = meshBounds.min;
         meshData.boundingCornerB = meshBounds.max;
 
-        meshData.triangleCount = (uint)GetTriangleCount();
-        meshData.startingIndex = startingTriangleIndex;
+        meshData.triangleBufferOffset = startingTriangleIndex;
+        meshData.accelerationBufferOffset = accelerationStartingIndex;
         meshData.materialIndex = materialIndex;
 
         meshData.localToWorld = meshRenderer.localToWorldMatrix;
