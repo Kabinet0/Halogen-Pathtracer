@@ -60,10 +60,10 @@ MonoBehaviour:
     FarPlaneDistance: 5000
     FocalPlaneDistance: 1.82
     ApertureAngle: 0
-    DebugMode: 5
+    DebugMode: 0
     BoundsDebugMode: 0
-    TriangleDebugDisplayRange: 1326
-    BoxDebugDisplayRange: 150
+    TriangleDebugDisplayRange: 742
+    BoxDebugDisplayRange: 173
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -120,7 +120,7 @@ MonoBehaviour:
     passOperation: 2
     failOperation: 0
     zFailOperation: 0
-  m_ShadowTransparentReceive: 1
+  m_ShadowTransparentReceive: 0
   m_RenderingMode: 0
   m_DepthPrimingMode: 0
   m_CopyDepthMode: 0

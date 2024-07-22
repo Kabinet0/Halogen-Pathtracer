@@ -194,7 +194,7 @@ void determine_frontface(inout RayHit hit, float3 dir)
 }
 
 // ray_preInv means it expects a pre inverted direction aka. dir = 1/dir is precomputed and baked into the ray struct 
-bool ray_AABB_test(float3 cornerA, float3 cornerB, in Ray ray_preInv)
+float ray_AABB_test(float3 cornerA, float3 cornerB, in Ray ray_preInv)
 {
     float3 t1 = (cornerA - ray_preInv.origin) * ray_preInv.dir;
     float3 t2 = (cornerB - ray_preInv.origin) * ray_preInv.dir;
@@ -208,7 +208,7 @@ bool ray_AABB_test(float3 cornerA, float3 cornerB, in Ray ray_preInv)
     tMin = max(tMin, min(t1.z, t2.z));
     tMax = min(tMax, max(t1.z, t2.z));
     
-    return tMax > max(0, tMin);
+    return tMax > max(0, tMin) ? tMin : 1.#INF;
 }
 
 RayHit sphere_intersection(Ray ray, Sphere sphere)
@@ -306,7 +306,7 @@ void get_ray_scene_intersection_sphere(in Ray ray, inout RayHit closestHit)
     ray_preInv.dir = 1 / ray_preInv.dir;
     for (int i = 0; i < (int)BufferCounts.x; i++) 
     {
-        if (ray_AABB_test(SphereList[i].boundingCornerA, SphereList[i].boundingCornerB, ray_preInv))
+        if (ray_AABB_test(SphereList[i].boundingCornerA, SphereList[i].boundingCornerB, ray_preInv) < ViewParameters.w) // hit must be closer than far clip plane
         {
             RayHit hit = sphere_intersection(ray, SphereList[i]);
             if (hit.rayT < closestDistance && hit.rayT > hitDistanceEpsilon)
@@ -324,23 +324,18 @@ void get_ray_scene_intersection_mesh(in Ray ray, inout RayHit closestHit)
     closestIntersection.rayT = closestHit.rayT;
 
     float hitDistanceEpsilon = 0.0001f;
-
-    // Pre invert and cache result ray for faster intersecion testing
-    Ray ray_preInv = ray; 
-    ray_preInv.dir = 1 / ray_preInv.dir;
     
     // Test for ray intersection
     for (int i = 0; i < (int)BufferCounts.y; i++)
     {
         Mesh meshData = MeshList[i];
-
        
         // Intentionally do not normalize direction to avoid converting distance back to world space
         // as documented here: https://graphicscompendium.com/raytracing/12-transformations
         Ray localRay = convert_ray_space_unf(ray, meshData.worldToLocal);
         // Pre invert and cache local ray for BVH AABB testing, normalize direction to not mess with intersection test math
         Ray localRay_preInv = localRay;
-        localRay_preInv.dir = 1 / normalize(localRay_preInv.dir);
+        localRay_preInv.dir = 1 / (localRay_preInv.dir);
 
         int NodeStack[32];
         int stackPointer = 0;
@@ -367,17 +362,29 @@ void get_ray_scene_intersection_mesh(in Ray ray, inout RayHit closestHit)
                         closestIntersection.triangleIndex = uint2(i, tri + currentNode.indexA); // consider cleaner way?
                     }
                 }
-            } else{ // this node is a hierarchy node
-                BVHEntry childNodeA = BLASBuffer[currentNode.indexA];
-                BVHEntry childNodeB = BLASBuffer[currentNode.indexA + 1];
+            } else { // this node is a hierarchy node
+                BVHEntry childNodeA = BLASBuffer[meshData.accelerationBufferOffset + currentNode.indexA];
+                BVHEntry childNodeB = BLASBuffer[meshData.accelerationBufferOffset + currentNode.indexA + 1];
 
-                if (ray_AABB_test(childNodeA.boundingCornerA, childNodeA.boundingCornerB, localRay_preInv)){
-                    NodeStack[stackPointer++] = currentNode.indexA;
-                }
-                if (ray_AABB_test(childNodeB.boundingCornerA, childNodeB.boundingCornerB, localRay_preInv)){
-                    NodeStack[stackPointer++] = currentNode.indexA + 1;
-                }
+                float distanceA = ray_AABB_test(childNodeA.boundingCornerA, childNodeA.boundingCornerB, localRay_preInv);
+                float distanceB = ray_AABB_test(childNodeB.boundingCornerA, childNodeB.boundingCornerB, localRay_preInv);
                 AABBTests += 2;
+
+                if (distanceB < distanceA){
+                    if (distanceA < closestIntersection.rayT){
+                        NodeStack[stackPointer++] = meshData.accelerationBufferOffset + currentNode.indexA;
+                    }
+                    if (distanceB < closestIntersection.rayT){
+                        NodeStack[stackPointer++] = meshData.accelerationBufferOffset + currentNode.indexA + 1;
+                    }
+                } else {
+                    if (distanceB < closestIntersection.rayT){
+                        NodeStack[stackPointer++] = meshData.accelerationBufferOffset + currentNode.indexA + 1;
+                    }
+                    if (distanceA < closestIntersection.rayT){
+                        NodeStack[stackPointer++] = meshData.accelerationBufferOffset + currentNode.indexA;
+                    }
+                }
             }
         }
         
@@ -500,13 +507,28 @@ float3 trace_ray_debug_normal(in Ray ray, in RayHit hit)
     }
 }
 
+float3 trace_ray_debug_triangle_intersections(in RayHit hit)
+{
+    if (TriangleTests > TriangleDebugDisplayRange){
+        return float3(1,1,1);
+    }
+    return float3(TriangleTests / (float)TriangleDebugDisplayRange, 0, 0);
+}
+
+float3 trace_ray_debug_box_intersections(in RayHit hit)
+{
+    if (AABBTests > BoxDebugDisplayRange){
+        return float3(1,1,1);
+    }
+    return float3(AABBTests / (float)BoxDebugDisplayRange, 0, 0);
+}
+
 float3 trace_ray_debug_combined_intersections(in RayHit hit)
 {
-    float3 outputColor = float3(TriangleTests / (float)TriangleDebugDisplayRange, 0, AABBTests / (float)BoxDebugDisplayRange);
     if (TriangleTests > TriangleDebugDisplayRange || AABBTests > BoxDebugDisplayRange) {
-        outputColor = float3(1,1,1);
+        return float3(1,1,1);
     }
-    return outputColor;
+    return float3(TriangleTests / (float)TriangleDebugDisplayRange, 0, AABBTests / (float)BoxDebugDisplayRange);
 }
 
 float3 trace_ray_debug(in Ray ray)
@@ -528,9 +550,9 @@ float3 trace_ray_debug(in Ray ray)
         case 2:
             return trace_ray_debug_normal(ray, hit);
         case 3:
-            return float3(TriangleTests / (float)TriangleDebugDisplayRange, 0, 0);
+            return trace_ray_debug_triangle_intersections(hit);
         case 4:
-            return float3(AABBTests / (float)BoxDebugDisplayRange, 0, 0);
+            return trace_ray_debug_box_intersections(hit);
         case 5:
             return trace_ray_debug_combined_intersections(hit);
     }

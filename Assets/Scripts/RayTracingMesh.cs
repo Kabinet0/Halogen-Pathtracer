@@ -22,7 +22,7 @@ public class RayTracingMesh : MonoBehaviour
     private HalogenTriangle[] halogenTriangleList;
     private HalogenMeshData meshData = new HalogenMeshData();
 
-    [SerializeField] private List<BVHEntry> meshBVH = new List<BVHEntry>();
+    private List<BVHEntry> meshBVH = new List<BVHEntry>();
 
     // Cached raw meshdata
     private List<Vector3> verticies = new List<Vector3>();

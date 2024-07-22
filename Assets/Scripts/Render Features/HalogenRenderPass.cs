@@ -49,7 +49,6 @@ public struct HalogenTriangle
     public Vector3 normalC;
 }
 
-[System.Serializable]
 public struct BVHEntry // 32 byte struct, so probably cache aligned :D
 {
     public uint indexA; // triangle start if leaf node, index to first child if hierarchy node
@@ -148,12 +147,12 @@ public class HalogenRenderPass : ScriptableRenderPass
         AccumulationBufferDirty = true;
         AccumulationMaterial = CoreUtils.CreateEngineMaterial(_settings.AccumulationShader);
 
-        Accumulate = false;
+        Accumulate = _settings.Accumulate;
+
         switch (_settings.DebugMode)
         {
             default:
                 HalogenDebugMode = 0;
-                Accumulate = _settings.Accumulate; // If no debug mode is active, use accumulate setting value
                 break;
             case global::HalogenDebugMode.Albedo:
                 HalogenDebugMode = 1;
