@@ -35,6 +35,7 @@ public struct PackedHalogenMaterial
     public Vector4 specularAlbedo;
     public float metallic;
     public float roughness;
+    public float indexOfRefraction;
     public Vector4 emissive;
 }
 
@@ -84,6 +85,7 @@ public class HalogenRenderPass : ScriptableRenderPass
     Material AccumulationMaterial;
     Vector3 PriorCameraPosition;
     Quaternion PriorCameraRotation;
+    Vector2Int PriorResolution;
 
     RTHandle rtAccumulationBuffer;
     RTHandle rtPathtracingBuffer;
@@ -193,6 +195,14 @@ public class HalogenRenderPass : ScriptableRenderPass
         RenderingUtils.ReAllocateIfNeeded(ref rtAccumulationBuffer, colorDescriptor, name: "_HalogenAccumulationBuffer");
         RenderingUtils.ReAllocateIfNeeded(ref rtBackBuffer, colorDescriptor, name: "_HalogenBackBuffer");
         RenderingUtils.ReAllocateIfNeeded(ref rtSecondBounceBuffer, colorDescriptor, name: "_HalogenSecondBounceDiffuse");
+
+        Vector2Int currentResolution = new Vector2Int(colorDescriptor.width, colorDescriptor.height);
+        if (currentResolution != PriorResolution)
+        {
+            ClearAccumulation();
+        }
+
+        PriorResolution = currentResolution;
     }
 
     void ClearAccumulation()
@@ -227,7 +237,7 @@ public class HalogenRenderPass : ScriptableRenderPass
 
         PriorCameraPosition = cameraTransform.position;
         PriorCameraRotation = cameraTransform.rotation;
-
+        
 
         UpdateObjectBuffers(cmd);
 
@@ -333,6 +343,7 @@ public class HalogenRenderPass : ScriptableRenderPass
         packedMaterial.specularAlbedo = (Vector4)material.specularColor;
         packedMaterial.metallic = material.metallic;
         packedMaterial.roughness = material.roughness;
+        packedMaterial.indexOfRefraction = material.indexOfRefraction;
         packedMaterial.emissive = new Vector4(material.emissionColor.r, material.emissionColor.g, material.emissionColor.b, material.emissionIntensity);
 
         return packedMaterial;

@@ -9,6 +9,7 @@ public struct HalogenMaterial
     public Color color;
     [Range(0, 1)] public float roughness;
     [Range(0, 1)] public float metallic;
+    [Range(1, 8)] public float indexOfRefraction;
     public Color specularColor;
 
     [Header("Emission")]
@@ -21,6 +22,7 @@ public struct HalogenMaterial
         specularColor = defaultColor;
         roughness = 1;
         metallic = 0;
+        indexOfRefraction = 1;
 
         emissionColor = Color.black;
         emissionIntensity = 0;

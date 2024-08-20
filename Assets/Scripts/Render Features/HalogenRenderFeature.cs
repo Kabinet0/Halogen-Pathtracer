@@ -76,7 +76,7 @@ public class HalogenRenderFeature : ScriptableRendererFeature
         if (settings.HalogenShader != null && settings.AccumulationShader != null)
         {
             halogenPass = new HalogenRenderPass(ref settings);
-            halogenPass.renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
+            halogenPass.renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
         }
     }
 

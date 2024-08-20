@@ -42,6 +42,7 @@ struct HalogenMaterial
     float4 specularAlbedo;
     float metallic;
     float roughness;
+    float indexOfRefraction;
     float4 emissive;
 };
 
@@ -123,10 +124,10 @@ float4 BufferCounts; // x: Spheres, y: MeshData
 // Also discovered (independantly I swear) from on https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ 
 float random_value()
 {
-    uint state = randomState;
-    randomState = randomState * 747796405u + 2891336453u;
+    uint state = randomState * 747796405u + 2891336453u;
     uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
     uint val = (word >> 22u) ^ word;
+    randomState = val;
     return (float) val / 4294967296.0f;
 }
 
@@ -450,6 +451,30 @@ float3 schlick_approximation(float3 specularColor, float3 incidentDirection, flo
     return specularColor + (1 - specularColor) * pow((1 - (incidentDirection * halfwayVector)), 5);
 }
 
+// calculates influence of fresnel
+float schlick_adjusted_specular(float n1, float n2, float3 normal, float3 incident, float minSpecular, float maxSpecular)
+{
+    // Schlick aproximation
+    float r0 = (n1-n2) / (n1+n2);
+    r0 *= r0;
+    float cosX = -dot(normal, incident);
+    if (n1 > n2)
+    {
+        float n = n1/n2;
+        float sinT2 = n*n*(1.0-cosX*cosX);
+
+        // Total internal reflection
+        if (sinT2 > 1.0)
+            return maxSpecular;
+        cosX = sqrt(1.0-sinT2);
+    }
+    float x = 1.0-cosX;
+    float ret = r0+(1.0-r0)*x*x*x*x*x;
+
+    // adjust reflect multiplier for object reflectivity
+    return lerp(minSpecular, maxSpecular, ret);
+}
+
 // Trowbridge-Reitz Distribution 
 // Squares roughness to improve perceptual linearity
 float3 microfacet_normal_distribution(float3 halfwayVector, float roughness)
@@ -458,6 +483,7 @@ float3 microfacet_normal_distribution(float3 halfwayVector, float roughness)
     return float3(1, 1, 1);
 }
 
+// Todo: replace all of this with a proper microfacet model from PBR book
 float3 material_BRDF(inout Ray ray, in RayHit hit)
 {
     float3 attenuation = hit.material.albedo.rgb;
@@ -465,7 +491,9 @@ float3 material_BRDF(inout Ray ray, in RayHit hit)
     ray.origin = hit.pos;
 
     float3 diffuseRayDir = lambertain_scatter(ray.dir, hit.normal);
-    if (random_value() < hit.material.metallic)
+
+    bool do_specular_scatter = random_value() < ((hit.material.metallic > 0) ? schlick_adjusted_specular(1, hit.material.indexOfRefraction, hit.normal, ray.dir,  hit.material.metallic, 1) : hit.material.metallic);
+    if (do_specular_scatter)
     {
         float3 specularRayDir = specular_scatter(ray.dir, hit.normal);
         // Account for rough reflection
