@@ -8,12 +8,12 @@ using static UnityEngine.Mesh;
 [ExecuteInEditMode]
 public class RayTracingMesh : MonoBehaviour
 {
-    private readonly float AABBEpsilon = 0.00001f;
+    public static readonly float AABBEpsilon = 0.00001f;
 
     public HalogenMaterial material = new HalogenMaterial(Color.white); // Silly C# 9
 
     [Header("Acceleration Structure Parameters")]
-    public int HierarchyDepth = 1;
+    public int MaxHierarchyDepth = 32;
 
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
@@ -44,6 +44,7 @@ public class RayTracingMesh : MonoBehaviour
     void OnDisable()
     {
         RayTracingManager.RemoveFromMeshList(this);
+        id = 0;
     }
 
     private void CacheRaytracingData()

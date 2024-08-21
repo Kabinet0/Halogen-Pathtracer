@@ -5,11 +5,15 @@ using UnityEngine;
 
 public class BVHGenerator
 {
+    public static readonly int maxNodeTriangleCount = 5; // Just guessed. This seems fine.
+
     // todo
     // sometimes I call them nodes sometimes I call them entries...
     // pick a lane, me
     public static void GenerateMeshBVH(RayTracingMesh meshObject) 
     {
+        
+
         List<int> indicies = meshObject.GetTriangles();
         List<Vector3> verticies = meshObject.GetVerticies();
         List<BVHEntry> BVHData = meshObject.GetBVH();
@@ -38,11 +42,16 @@ public class BVHGenerator
         entryProcessingQueue.Add(0);
 
         int nodeSplitFailures = 0;
-        int buh = 0;
+        int totalDepth = 0;
+        int minTrisPerNode = int.MaxValue;
+        int maxTrisPerNode = 0;
+
         // Process all nodes at each depth up until max depth
-        for (int depth = 1; depth <= meshObject.HierarchyDepth; depth++)
+        for (int depth = 1; depth <= meshObject.MaxHierarchyDepth; depth++)
         {
-            buh++;
+            if (!(entryProcessingQueue.Count > 0)) { break; }
+            
+            totalDepth++;
             // Attempt splitting each leaf node at the current depth into a hierarchy node
             foreach (int entryIndex in entryProcessingQueue)
             {
@@ -74,9 +83,19 @@ public class BVHGenerator
 
                 uint childACount = (uint)i - nodeFirstTriangle;
                 uint childBCount = nodeTriangleCount - childACount;
-                if (!(childACount > 0 || childBCount > 0)) {
+                if (!(childACount > 0 && childBCount > 0)) {
                     nodeSplitFailures++;
+                    // Calculate leaf node statistics (like 80% sure this is right)
+                    minTrisPerNode = Mathf.Min(minTrisPerNode, (int)nodeTriangleCount);
+                    maxTrisPerNode = Mathf.Max(maxTrisPerNode, (int)nodeTriangleCount);
                     continue; // split position didn't create two seperate groups, give up.
+                }
+
+                if (nodeTriangleCount <= maxNodeTriangleCount) {
+                    // Calculate leaf node statistics (like 80% sure this is right)
+                    minTrisPerNode = Mathf.Min(minTrisPerNode, (int)nodeTriangleCount);
+                    maxTrisPerNode = Mathf.Max(maxTrisPerNode, (int)nodeTriangleCount);
+                    continue; // fewer than max vertex count in this node. give up since we really don't need to split it
                 }
 
                 // Create new leaf nodes as children
@@ -86,7 +105,8 @@ public class BVHGenerator
                 if (childACount > 2) { // Don't bother processing a node with too few triangles to split
                     nextEntryProcessingQueue.Add(childAIndex); // queue up new node for splitting next iteration
                 }
-                
+
+
 
                 int childBIndex = BVHData.Count;
                 Bounds childBoundsB = calculateBounds((uint)i, childBCount, indicies, verticies);
@@ -94,6 +114,8 @@ public class BVHGenerator
                 if (childBCount > 2) {
                     nextEntryProcessingQueue.Add(childBIndex);
                 }
+
+
 
                 // Update current node to point to new children
                 currentEntry.indexA = (uint)childAIndex; // Child B is always at childAIndex + 1 so no need to store it
@@ -106,7 +128,7 @@ public class BVHGenerator
             nextEntryProcessingQueue.Clear();
         }
 
-        Debug.Log("Finished generating BVH with " + nodeSplitFailures + " node splitting failures.\nNode Depth: " + meshObject.HierarchyDepth);
+        Debug.Log("Finished generating BVH for object: " + meshObject.gameObject.name + " with " + nodeSplitFailures + " node splitting failures.\nNode Depth: " + totalDepth + ", Max Node Depth: " + meshObject.MaxHierarchyDepth + ", Min Node Triangle Count: " + minTrisPerNode + ", Max Node Triangle Count: " + maxTrisPerNode);
     }
 
     // todo: this is kinda cursed, do something about it?
@@ -143,8 +165,21 @@ public class BVHGenerator
             boundsMax = Vector3.Max(boundsMax, vertexArray[triangleArray[triangleStartIndex + 1]]);
             boundsMax = Vector3.Max(boundsMax, vertexArray[triangleArray[triangleStartIndex + 2]]);
         }
+
         Bounds bounds = new Bounds();
         bounds.SetMinMax(boundsMin, boundsMax);
+
+        if (!float.IsNormal(boundsMin.x))
+        {
+            Debug.Log("Error: bounding box contains NaN, start idx: " + startIndex + ", count: " + count);
+        }
+
+        // Ensure AABB is at least of a certain size, to make sure thin meshes still render
+        if (bounds.size.x < RayTracingMesh.AABBEpsilon || bounds.size.y < RayTracingMesh.AABBEpsilon || bounds.size.z < RayTracingMesh.AABBEpsilon)
+        {
+            bounds.max += Vector3.one * RayTracingMesh.AABBEpsilon;
+        } 
+
         return bounds;
     }
 

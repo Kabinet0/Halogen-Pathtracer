@@ -16,6 +16,7 @@ public struct HalogenSphere
     public Vector3 boundingCornerB;
 }
 
+[System.Serializable]
 public struct HalogenMeshData
 {
     public uint triangleBufferOffset;
@@ -50,6 +51,7 @@ public struct HalogenTriangle
     public Vector3 normalC;
 }
 
+[System.Serializable]
 public struct BVHEntry // 32 byte struct, so probably cache aligned :D
 {
     public uint indexA; // triangle start if leaf node, index to first child if hierarchy node
@@ -171,6 +173,10 @@ public class HalogenRenderPass : ScriptableRenderPass
             case global::HalogenDebugMode.Combined:
                 HalogenDebugMode = 5;
                 break;
+        }
+
+        if (HalogenDebugMode != 0) {
+            MaxBounces = _settings.FirstInteractionOnly ? 0 : MaxBounces;
         }
 
         TriangleDebugDisplayRange = Mathf.Max(_settings.TriangleDebugDisplayRange, 1);

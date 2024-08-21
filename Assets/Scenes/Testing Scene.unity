@@ -138,7 +138,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &69269743
 Transform:
   m_ObjectHideFlags: 0
@@ -183,7 +183,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &139507086
 Transform:
   m_ObjectHideFlags: 0
@@ -219,7 +219,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!64 &139507088
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -445,7 +445,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 32
+  MaxHierarchyDepth: 32
 --- !u!4 &188276260 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a47406085bc6ffa438b22eca58eb7b10,
@@ -471,7 +471,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &254522448
 Transform:
   m_ObjectHideFlags: 0
@@ -507,7 +507,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!64 &254522450
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -831,7 +831,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 32
+  MaxHierarchyDepth: 32
 --- !u!1 &330399598
 GameObject:
   m_ObjectHideFlags: 0
@@ -887,7 +887,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!64 &330399601
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -1112,12 +1112,12 @@ GameObject:
   - component: {fileID: 352205336}
   - component: {fileID: 352205335}
   m_Layer: 0
-  m_Name: Cube (2)
+  m_Name: Light
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &352205334
 Transform:
   m_ObjectHideFlags: 0
@@ -1153,7 +1153,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 1, g: 1, b: 1, a: 1}
     emissionIntensity: 2
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!65 &352205336
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1371,7 +1371,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &379989497
 Transform:
   m_ObjectHideFlags: 0
@@ -1407,7 +1407,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!64 &379989499
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -1910,7 +1910,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &454808404
 Transform:
   m_ObjectHideFlags: 0
@@ -1927,13 +1927,11 @@ Transform:
   - {fileID: 379989497}
   - {fileID: 1157460197}
   - {fileID: 1838880769}
-  - {fileID: 330399599}
   - {fileID: 139507086}
   - {fileID: 254522448}
-  - {fileID: 1809335038}
+  - {fileID: 330399599}
   - {fileID: 352205334}
-  - {fileID: 1994273868}
-  - {fileID: 1144958431}
+  - {fileID: 819601920}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &465785108
@@ -2233,6 +2231,7 @@ Transform:
   - {fileID: 513823899}
   - {fileID: 294358911}
   - {fileID: 188276260}
+  - {fileID: 1330358326}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &536436555 stripped
@@ -2261,7 +2260,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 32
+  MaxHierarchyDepth: 32
 --- !u!1 &555362644
 GameObject:
   m_ObjectHideFlags: 0
@@ -2535,7 +2534,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &611814025
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2556,7 +2555,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!65 &611814026
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2682,7 +2681,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 1, g: 0, b: 0.76097584, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 5
+  MaxHierarchyDepth: 32
 --- !u!23 &650831232
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -2930,7 +2929,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!65 &780873881
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3002,6 +3001,40 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 780873878}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &819601919
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 819601920}
+  m_Layer: 0
+  m_Name: Basic Interior
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &819601920
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 819601919}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1809335038}
+  - {fileID: 1994273868}
+  - {fileID: 1144958431}
+  m_Father: {fileID: 454808404}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -3606,7 +3639,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!65 &1143349601
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3707,11 +3740,11 @@ Transform:
   m_GameObject: {fileID: 1144958430}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.115712814, z: -0, w: 0.99328274}
-  m_LocalPosition: {x: -0.775, y: -2.37, z: 14.861}
+  m_LocalPosition: {x: -0.7750001, y: -2.37, z: 14.860999}
   m_LocalScale: {x: 1.2, y: 0.25, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 454808404}
+  m_Father: {fileID: 819601920}
   m_LocalEulerAnglesHint: {x: 0, y: 13.289, z: 0}
 --- !u!114 &1144958432
 MonoBehaviour:
@@ -3733,7 +3766,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!65 &1144958433
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3824,7 +3857,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1157460197
 Transform:
   m_ObjectHideFlags: 0
@@ -3860,7 +3893,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!64 &1157460199
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -4115,7 +4148,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!135 &1248192472
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -4279,6 +4312,134 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 188276257}
   m_SourcePrefab: {fileID: 100100000, guid: a47406085bc6ffa438b22eca58eb7b10, type: 3}
+--- !u!1 &1330358325
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1330358326}
+  - component: {fileID: 1330358330}
+  - component: {fileID: 1330358329}
+  - component: {fileID: 1330358328}
+  - component: {fileID: 1330358327}
+  m_Layer: 0
+  m_Name: Quad
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &1330358326
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1330358325}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 531909747}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1330358327
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1330358325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40cc63cfb0d461f4394420f60095ba05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  material:
+    color: {r: 1, g: 1, b: 1, a: 1}
+    roughness: 1
+    metallic: 0
+    indexOfRefraction: 1
+    specularColor: {r: 1, g: 1, b: 1, a: 1}
+    emissionColor: {r: 0, g: 0, b: 0, a: 1}
+    emissionIntensity: 0
+  MaxHierarchyDepth: 32
+--- !u!64 &1330358328
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1330358325}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &1330358329
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1330358325}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1330358330
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1330358325}
+  m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &1362545245
 GameObject:
   m_ObjectHideFlags: 0
@@ -4404,7 +4565,7 @@ MonoBehaviour:
     indexOfRefraction: 1
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0.754717, g: 0.42752162, b: 0.09611962, a: 1}
-    emissionIntensity: 4
+    emissionIntensity: 5
   Radius: 1
 --- !u!1 &1406787989
 GameObject:
@@ -5826,12 +5987,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1809335037}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.14046915, z: 0, w: 0.99008507}
-  m_LocalPosition: {x: -1.16, y: -1.25, z: 16.83}
-  m_LocalScale: {x: 1.5, y: 2.5, z: 1.5}
+  m_LocalRotation: {x: -0, y: -0.14046915, z: -0, w: 0.99008507}
+  m_LocalPosition: {x: -1.1599998, y: -1.25, z: 16.83}
+  m_LocalScale: {x: 1.4999999, y: 2.5, z: 1.4999999}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 454808404}
+  m_Father: {fileID: 819601920}
   m_LocalEulerAnglesHint: {x: 0, y: -16.15, z: 0}
 --- !u!114 &1809335039
 MonoBehaviour:
@@ -5853,7 +6014,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!65 &1809335040
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -5944,7 +6105,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1838880769
 Transform:
   m_ObjectHideFlags: 0
@@ -5980,7 +6141,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!64 &1838880771
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -6209,11 +6370,11 @@ Transform:
   m_GameObject: {fileID: 1994273867}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.2588186, z: -0, w: 0.965926}
-  m_LocalPosition: {x: 0.9448327, y: -1.75, z: 15.830148}
+  m_LocalPosition: {x: 0.9448328, y: -1.75, z: 15.830148}
   m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 454808404}
+  m_Father: {fileID: 819601920}
   m_LocalEulerAnglesHint: {x: 0, y: 30, z: 0}
 --- !u!114 &1994273869
 MonoBehaviour:
@@ -6235,7 +6396,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 1
+  MaxHierarchyDepth: 32
 --- !u!65 &1994273870
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6538,7 +6699,7 @@ MonoBehaviour:
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     emissionColor: {r: 1, g: 1, b: 1, a: 1}
     emissionIntensity: 0
-  HierarchyDepth: 20
+  MaxHierarchyDepth: 32
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

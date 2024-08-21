@@ -41,7 +41,8 @@ public struct HalogenSettings
     [Range(0, 90)] public float ApertureAngle;
 
     [Header("Debug")]
-    
+
+    public bool FirstInteractionOnly;
     public HalogenDebugMode DebugMode;
     public HalogenMeshBoundsDebugMode BoundsDebugMode;
     public int TriangleDebugDisplayRange;

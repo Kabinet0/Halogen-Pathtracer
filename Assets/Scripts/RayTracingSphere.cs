@@ -29,6 +29,7 @@ public class RayTracingSphere : MonoBehaviour
     void OnDisable()
     {
         RayTracingManager.RemoveFromSphereList(this);
+        id = 0;
     }
     public uint GetID()
     {
