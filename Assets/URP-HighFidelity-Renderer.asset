@@ -55,7 +55,7 @@ MonoBehaviour:
     ShowInSceneView: 1
     Accumulate: 1
     SamplesPerPixel: 1
-    MaxBounces: 3
+    MaxBounces: 12
     NearPlaneDistance: 0.1
     FarPlaneDistance: 5000
     FocalPlaneDistance: 1.82

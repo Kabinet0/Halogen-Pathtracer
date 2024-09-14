@@ -1,6 +1,8 @@
 #pragma kernel HalogenCompute
 
 static const float PI = radians(180);
+static const float epsilon = 0.00001f;
+static const float empty_medium_IOR = 1;
 static uint randomState;
 
 int RandomSeed;
@@ -42,8 +44,12 @@ struct HalogenMaterial
     float4 specularAlbedo;
     float metallic;
     float roughness;
-    float indexOfRefraction;
     float4 emissive;
+
+    // transmission related
+    float3 subsurfaceColor;
+    float indexOfRefraction;
+    float absorption;
 };
 
 struct Sphere
@@ -85,6 +91,12 @@ struct Ray
 {
     float3 origin;
     float3 dir;
+};
+
+struct ParticipatingRayMedium
+{
+    float indexOfRefraction;
+    float3 colorAbsorption;
 };
 
 // Data describing a ray hitting a surface, as well the surface being hit
@@ -160,9 +172,9 @@ float2 get_random_point_circle(float radius)
 
 float3 sample_sky(Ray ray)
 {
-    float v = 0.5f * (ray.dir.y + 1.0f);
-    return lerp(float3(0.1f, 0.1f, 0.1f), float3(0.5f, 0.7f, 1.0f), v) * 0.7f;
-    //return float3(0.0f, 0.0f, 0.0f);
+    // float v = 0.5f * (ray.dir.y + 1.0f);
+    // return lerp(float3(0.1f, 0.1f, 0.1f), float3(0.5f, 0.7f, 1.0f), v) * 0.7f;
+    return float3(0.0f, 0.0f, 0.0f);
 }
 
 // Ensures direction normalization after being converted 
@@ -212,6 +224,9 @@ float ray_AABB_test(float3 cornerA, float3 cornerB, in Ray ray_preInv)
     return tMax > max(0, tMin) ? tMin : 1.#INF;
 }
 
+// todo math here can be optimised, division by a can be axed
+// can't be bothered to do it now though
+// on second thought this whole function is a mess that needs some tlc
 RayHit sphere_intersection(Ray ray, Sphere sphere)
 {
     float3 shiftedRayOrigin = ray.origin - sphere.center;
@@ -230,16 +245,21 @@ RayHit sphere_intersection(Ray ray, Sphere sphere)
     
     if (discriminant >= 0.0f)
     {
-        float distance = (-b - sqrt(discriminant)) / (2.0 * a);
-        
-        if (distance > 0.0f)
+        float hitDistance = (-b - sqrt(discriminant)) / (2.0 * a);
+        rayhit.orientation = 1;
+
+        // there has to be a better way to do this, right???
+        if (hitDistance < 0.0f)
         {
-            rayhit.rayT = distance;
-            rayhit.pos = ray.origin + ray.dir * distance;
-            rayhit.normal = normalize(rayhit.pos - sphere.center); // outward normal
-            rayhit.orientation = 1; // yeah sure whatever
-            rayhit.material = sphere.material;
+            hitDistance = (-b + sqrt(discriminant)) / (2.0 * a);
+            rayhit.orientation = -1;
         }
+
+        rayhit.rayT = hitDistance;
+        rayhit.pos = ray.origin + ray.dir * hitDistance;
+        // rayhit.orientation = (distance(rayhit.pos, sphere.center) + epsilon - sphere.radius) > 0 ? 1 : -1; // yeah sure whatever
+        rayhit.normal = normalize(rayhit.pos - sphere.center) * rayhit.orientation; // outward normal
+        rayhit.material = sphere.material;
     }
     
     
@@ -411,8 +431,7 @@ void get_ray_scene_intersection_mesh(in Ray ray, inout RayHit closestHit)
         closestHit.normal = normalize(mul(float4(closestHit.normal, 0.0), meshData.worldToLocal).xyz); 
         //closestIntersection.normal = normalize((float3) mul(meshData.localToWorld, float4(closestIntersection.normal, 0.0f)));
 
-        closestHit.pos = ray.origin + (ray.dir * closestIntersection.rayT)
-             + closestHit.normal * 0.0001; // offset from intersection for floating point reasons
+        closestHit.pos = ray.origin + (ray.dir * closestIntersection.rayT); // add epsilon to position later
     }
 }
 
@@ -425,7 +444,7 @@ RayHit get_ray_intersection(in Ray ray)
             
     get_ray_scene_intersection_mesh(ray, closestHit);
 
-    //closestIntersection.material.albedo = float4(closestDistance / 5, 0, 0, 0.0f);
+    //closestHit.material.albedo = float4(closestHit.orientation, 0, 0, 0.0f);
     return closestHit;
 }
 
@@ -441,6 +460,7 @@ float3 lambertain_scatter(in float3 incident, in float3 normal)
 }
 
 // How does this work?
+// note apparently this is the same as the default hlsl reflect() function
 float3 specular_scatter(in float3 incident, in float3 normal)
 {
     return incident - 2 * dot(incident, normal) * normal;
@@ -483,32 +503,71 @@ float3 microfacet_normal_distribution(float3 halfwayVector, float roughness)
     return float3(1, 1, 1);
 }
 
+float3 refract(float3 incident, float3 normal, float n1, float n2) {
+    float cos_theta = min(dot(-incident, normal), 1.0);
+    float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+    
+    float n1_over_n2 = n1 / n2;
+
+    if (n1_over_n2 * sin_theta > 1.0) {
+        return specular_scatter(incident, normal);
+    } else {
+        // handle total internal reflection
+        float3 refracted_perp =  n1_over_n2 * (incident + cos_theta*normal);
+        float3 refracted_parallel = -sqrt(abs(1.0 - (length(refracted_perp) * length(refracted_perp)))) * normal;
+        return refracted_perp + refracted_parallel;
+    }
+}
+
 // Todo: replace all of this with a proper microfacet model from PBR book
 float3 material_BRDF(inout Ray ray, in RayHit hit)
 {
-    float3 attenuation = hit.material.albedo.rgb;
+    float3 attenuation = float3(1, 1, 1);
 
     ray.origin = hit.pos;
 
-    float3 diffuseRayDir = lambertain_scatter(ray.dir, hit.normal);
+    float n_currentMedium = hit.orientation == 1 ? empty_medium_IOR : hit.material.indexOfRefraction;
+    float n_hitMedium = hit.orientation == 1 ? hit.material.indexOfRefraction : empty_medium_IOR;
 
-    bool do_specular_scatter = random_value() < ((hit.material.metallic > 0) ? schlick_adjusted_specular(1, hit.material.indexOfRefraction, hit.normal, ray.dir,  hit.material.metallic, 1) : hit.material.metallic);
-    if (do_specular_scatter)
-    {
-        float3 specularRayDir = specular_scatter(ray.dir, hit.normal);
-        // Account for rough reflection
-        // Sqauring roughness makes roughness look more perceptually linear: https://blog.demofox.org/2020/06/06/casual-shadertoy-path-tracing-2-image-improvement-and-glossy-reflections/
-        specularRayDir = lerp(specularRayDir, diffuseRayDir, hit.material.roughness * hit.material.roughness);
-        attenuation = hit.material.specularAlbedo.rgb;
-        
-        
-        ray.dir = specularRayDir;
+    bool do_refraction = random_value() > hit.material.albedo.w;
+    if (!do_refraction) {
+        //// Regular bounce ////
+        attenuation = hit.material.albedo.rgb;
+        float3 diffuseRayDir = lambertain_scatter(ray.dir, hit.normal);
+
+        bool do_specular_scatter = random_value() < ((hit.material.metallic > 0) ? schlick_adjusted_specular(n_currentMedium, n_hitMedium, hit.normal, ray.dir,  hit.material.metallic, 1) : hit.material.metallic);
+        if (do_specular_scatter)
+        {
+            float3 specularRayDir = specular_scatter(ray.dir, hit.normal);
+            // Account for rough reflection
+            // Sqauring roughness makes roughness look more perceptually linear: https://blog.demofox.org/2020/06/06/casual-shadertoy-path-tracing-2-image-improvement-and-glossy-reflections/
+            specularRayDir = lerp(specularRayDir, diffuseRayDir, hit.material.roughness * hit.material.roughness);
+            attenuation = hit.material.specularAlbedo.rgb;
+            
+            
+            ray.dir = specularRayDir;
+        }
+        else
+        {
+            ray.dir = diffuseRayDir;
+        }
+
+        ray.origin = hit.pos + hit.normal * 0.0001; // offset from intersection for floating point reasons
+    }  else {
+        //// Do refraction ////
+        attenuation = float3(1, 1, 1);
+        ray.dir = refract(ray.dir, hit.normal, n_currentMedium, n_hitMedium);
+
+        float3 diffuseRefractionDir = normalize(hit.normal + get_random_unit_vector());
+        ray.dir = lerp(ray.dir, diffuseRefractionDir, hit.material.roughness * hit.material.roughness);
+        ray.origin = hit.pos - hit.normal * 0.0001; // offset from intersection for floating point reasons, but in the opposite direction for refraction
     }
-    else
-    {
-        ray.dir = diffuseRayDir;
+
+    if (hit.orientation == -1) {
+        //// Handle absorption //// 
+        attenuation *= exp(-(hit.material.absorption * 1/hit.material.subsurfaceColor.rgb) * hit.rayT);
     }
-    
+
     ray.dir = normalize(ray.dir);
     return attenuation;
 }
@@ -562,12 +621,12 @@ float3 trace_ray_debug_combined_intersections()
 // Iterative method documented here: https://www.cs.uaf.edu/2012/spring/cs481/section/0/lecture/02_07_recursion_reflection.html
 float3 trace_ray(in Ray ray)
 {
-    float3 AccumulatedColor = float3(0, 0, 0);
-    float3 LightAttenuation = float3(1, 1, 1); // If something looks weird, add "precise" here
+    float3 accumulatedColor = float3(0, 0, 0);
+    float3 lightAttenuation = float3(1, 1, 1); 
     
     for (uint rayInteractions = 0; rayInteractions <= MaxBounces; rayInteractions++)
     {
-        if (length(LightAttenuation) < 0.05f)
+        if (length(lightAttenuation) < 0.05f)
         {
             break;
         }
@@ -583,18 +642,18 @@ float3 trace_ray(in Ray ray)
             
             float3 emissive = hit.material.emissive.rgb * hit.material.emissive.a;
             
-            AccumulatedColor += emissive * LightAttenuation;
-            LightAttenuation *= attenuation; 
+            accumulatedColor += emissive * lightAttenuation;
+            lightAttenuation *= attenuation; 
             
         }
         else
         {
-            AccumulatedColor += sample_sky(ray) * LightAttenuation; // Emissive
+            accumulatedColor += sample_sky(ray) * lightAttenuation; // Emissive
             break;
         }
     }
     
-    return AccumulatedColor;
+    return accumulatedColor;
 }
 
 float3 trace_ray_debug(in Ray ray)

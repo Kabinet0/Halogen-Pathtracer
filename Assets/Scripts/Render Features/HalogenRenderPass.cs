@@ -36,8 +36,11 @@ public struct PackedHalogenMaterial
     public Vector4 specularAlbedo;
     public float metallic;
     public float roughness;
-    public float indexOfRefraction;
     public Vector4 emissive;
+    // transmission properties
+    public Vector3 subsurfaceColor;
+    public float indexOfRefraction;
+    public float absorption;
 }
 
 public struct HalogenTriangle
@@ -351,6 +354,8 @@ public class HalogenRenderPass : ScriptableRenderPass
         packedMaterial.roughness = material.roughness;
         packedMaterial.indexOfRefraction = material.indexOfRefraction;
         packedMaterial.emissive = new Vector4(material.emissionColor.r, material.emissionColor.g, material.emissionColor.b, material.emissionIntensity);
+        packedMaterial.absorption = Mathf.Max(material.absorption, Mathf.Epsilon);
+        packedMaterial.subsurfaceColor = (Vector3)(Vector4)material.subsurfaceColor;
 
         return packedMaterial;
     }
