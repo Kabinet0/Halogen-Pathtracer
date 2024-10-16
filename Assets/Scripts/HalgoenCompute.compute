@@ -1,4 +1,5 @@
 #pragma kernel HalogenCompute
+#pragma use_dxc
 
 static const float PI = radians(180);
 static const float epsilon = 0.00001f;
@@ -38,8 +39,30 @@ uint BoxDebugDisplayRange;
 float focalPlaneDistance;
 float focalConeAngle;
 
+struct ParticipatingRayMedium
+{
+    float indexOfRefraction;
+    float3 absorption;
+    int priority;
+    uint materialID; // duplicated here so there's something to id mediums with in the medium list
+};
+
+// ugh why can't I make struct constructors D:
+ParticipatingRayMedium get_empty_medium() {
+    ParticipatingRayMedium empty_medium;
+    empty_medium.indexOfRefraction = 1;
+    empty_medium.materialID = -1;
+    empty_medium.priority = 1.#INF;
+    empty_medium.absorption = float3(0,0,0);
+
+    return empty_medium;
+}
+
+
 struct HalogenMaterial
 {
+    uint materialID;
+ 
     float4 albedo;
     float4 specularAlbedo;
     float metallic;
@@ -47,16 +70,14 @@ struct HalogenMaterial
     float4 emissive;
 
     // transmission related
-    float3 subsurfaceColor;
-    float indexOfRefraction;
-    float absorption;
+    ParticipatingRayMedium internalMedium;
 };
 
 struct Sphere
 {
     float3 center;
     float radius;
-    HalogenMaterial material;
+    uint materialIndex;
     float3 boundingCornerA;
     float3 boundingCornerB;
 };
@@ -93,10 +114,12 @@ struct Ray
     float3 dir;
 };
 
-struct ParticipatingRayMedium
+static ParticipatingRayMedium participatingMediumStack[8];
+static int mediumStackPointer = 0;
+
+struct MeshHitInfo
 {
-    float indexOfRefraction;
-    float3 colorAbsorption;
+    uint objectID;
 };
 
 // Data describing a ray hitting a surface, as well the surface being hit
@@ -108,6 +131,7 @@ struct RayHit
     float3 pos; 
     float3 normal;
     HalogenMaterial material;
+    MeshHitInfo meshData;
 };
 
 // Data describing a ray intersecting a triangle
@@ -122,8 +146,8 @@ struct RayTriangleIntersection
 };
 
 // Debugging variables
-int TriangleTests = 0;
-int AABBTests = 0;
+static int TriangleTests = 0;
+static int AABBTests = 0;
 
 StructuredBuffer<Triangle> TriangleBuffer;
 StructuredBuffer<BVHEntry> BLASBuffer;
@@ -224,6 +248,8 @@ float ray_AABB_test(float3 cornerA, float3 cornerB, in Ray ray_preInv)
     return tMax > max(0, tMin) ? tMin : 1.#INF;
 }
 
+
+
 // todo math here can be optimised, division by a can be axed
 // can't be bothered to do it now though
 // on second thought this whole function is a mess that needs some tlc
@@ -259,7 +285,7 @@ RayHit sphere_intersection(Ray ray, Sphere sphere)
         rayhit.pos = ray.origin + ray.dir * hitDistance;
         // rayhit.orientation = (distance(rayhit.pos, sphere.center) + epsilon - sphere.radius) > 0 ? 1 : -1; // yeah sure whatever
         rayhit.normal = normalize(rayhit.pos - sphere.center) * rayhit.orientation; // outward normal
-        rayhit.material = sphere.material;
+        rayhit.material = MaterialList[sphere.materialIndex];
     }
     
     
@@ -519,15 +545,99 @@ float3 refract(float3 incident, float3 normal, float n1, float n2) {
     }
 }
 
+// TODO: Handle too many intersections
+// 0 is highest priority
+void add_to_medium_stack(in ParticipatingRayMedium medium) {
+    // note:
+    // mediumStackPointer refers to current size of stack, and ponints to where to put next element
+
+    if (mediumStackPointer == 0) {
+        // stack is empty
+        participatingMediumStack[mediumStackPointer++] = medium;
+    } else {
+        // not empty, sort
+        int insertionIndex = mediumStackPointer;
+        if (medium.priority > participatingMediumStack[mediumStackPointer - 1].priority) {
+
+            for (int i = mediumStackPointer - 1; i >= 0; i--) {
+                if (medium.priority < participatingMediumStack[i].priority) {
+                    insertionIndex = i + 1;
+                    break;
+                }
+            }
+
+            // if not found an insertion index yet (needs insertion at bottom of stack)
+            if (insertionIndex == mediumStackPointer) {
+                insertionIndex = 0;
+            }
+        }
+
+        if (insertionIndex != mediumStackPointer) {
+            // other elements need shifting
+            for (int i = mediumStackPointer - 1; i >= insertionIndex; i--) {
+                participatingMediumStack[i + 1] = participatingMediumStack[i];
+            }
+
+            mediumStackPointer++;
+
+            // insert element at newly cleared index
+            participatingMediumStack[insertionIndex] = medium;
+        } else {
+            // it's at the end of the list anyways
+            participatingMediumStack[mediumStackPointer++] = medium;
+        }
+    }
+}
+
+void pop_from_medium_stack(uint materialID) {
+    for (int i = 0; i < mediumStackPointer; i++) {
+        if (participatingMediumStack[i].materialID == materialID) {
+            // found right element to remove
+            // no real concept of null in gpu programming so just shift all the other stack elements over and reduce the pointer
+            for (int k = i + 1; k < mediumStackPointer; k++) {
+                participatingMediumStack[k - 1] = participatingMediumStack[k]; 
+            }
+
+            mediumStackPointer--;
+
+            return;
+        }
+    }
+    // If the medium isn't found just cope about it I guess
+}
+
+bool determine_true_medium_hit(int priority) {
+    // in case list is empty
+    if (mediumStackPointer == 0) {
+        return true;
+    }
+    if (priority <= participatingMediumStack[mediumStackPointer - 1].priority) {
+        return true;
+    }
+    return false;
+}
+
+ParticipatingRayMedium get_top_ray_medium() {
+    if (mediumStackPointer > 0) {
+        // stack not empty, get highest priority element
+        return participatingMediumStack[mediumStackPointer - 1];
+    } else {
+        return get_empty_medium(); // kinda sucks also does this take vgpr or something
+    }
+
+}
+
 // Todo: replace all of this with a proper microfacet model from PBR book
-float3 material_BRDF(inout Ray ray, in RayHit hit)
+float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium currentMedium, ParticipatingRayMedium hitMedium)
 {
     float3 attenuation = float3(1, 1, 1);
 
     ray.origin = hit.pos;
 
-    float n_currentMedium = hit.orientation == 1 ? empty_medium_IOR : hit.material.indexOfRefraction;
-    float n_hitMedium = hit.orientation == 1 ? hit.material.indexOfRefraction : empty_medium_IOR;
+    
+    // todo remove
+    float n_currentMedium = currentMedium.indexOfRefraction;
+    float n_hitMedium = hitMedium.indexOfRefraction;
 
     bool do_refraction = random_value() > hit.material.albedo.w;
     if (!do_refraction) {
@@ -563,12 +673,74 @@ float3 material_BRDF(inout Ray ray, in RayHit hit)
         ray.origin = hit.pos - hit.normal * 0.0001; // offset from intersection for floating point reasons, but in the opposite direction for refraction
     }
 
-    if (hit.orientation == -1) {
-        //// Handle absorption //// 
-        attenuation *= exp(-(hit.material.absorption * 1/hit.material.subsurfaceColor.rgb) * hit.rayT);
-    }
+
 
     ray.dir = normalize(ray.dir);
+    return attenuation;
+}
+
+float3 evaluate_material_hit(inout Ray ray, in RayHit hit) {
+    float3 attenuation = float3(1, 1, 1);
+
+    // Can't use ternary operator because hlsl
+    // https://twitter.com/FreyaHolmer/status/1827278537704780049
+    // sigh
+    // ParticipatingRayMedium currentMedium = hit.orientation == 1 ? get_top_ray_medium() : hit.material.internalMedium;
+    // ParticipatingRayMedium hitMedium = hit.orientation == 1 ? hit.material.internalMedium : get_top_ray_medium();
+    // this errors for strange reasons
+    ParticipatingRayMedium currentMedium;
+    ParticipatingRayMedium hitMedium;
+
+
+    bool trueHit = true; 
+
+    if (hit.material.internalMedium.priority >= 0) { // if uses interface tracking (must be manifold)
+        trueHit = determine_true_medium_hit(hit.material.internalMedium.priority);        
+    
+    
+
+        if (hit.orientation == 1) {
+            currentMedium = get_top_ray_medium();
+            hitMedium = hit.material.internalMedium;
+            
+            add_to_medium_stack(hitMedium);
+        } else { 
+            if (mediumStackPointer == 0) {
+                currentMedium = hit.material.internalMedium;
+            } else {
+                currentMedium = get_top_ray_medium(); 
+            }
+            
+
+            pop_from_medium_stack(hit.material.internalMedium.materialID);
+
+            hitMedium = get_top_ray_medium();
+        }
+    } else {
+        if (hit.orientation == 1) {
+            currentMedium = get_top_ray_medium();
+            hitMedium = hit.material.internalMedium;
+        } else {
+            currentMedium = hit.material.internalMedium;
+            hitMedium = get_top_ray_medium();
+        }
+        
+    }
+
+    // only evaluate bsdf if hit is "real"
+    if (trueHit) {
+        attenuation = material_BRDF(ray, hit, currentMedium, hitMedium);
+    } else {
+        ray.origin = hit.pos - hit.normal * 0.0001;
+        attenuation = float3(1, 1, 1);
+    }
+
+    if (currentMedium.materialID != -1) {
+        //// Handle absorption //// 
+        attenuation *= exp(-(1/currentMedium.absorption) * hit.rayT);
+    }
+
+
     return attenuation;
 }
 
@@ -636,8 +808,8 @@ float3 trace_ray(in Ray ray)
         // Verify ray hit something, if distance to hit is less than far plane
         if (hit.rayT < ViewParameters.w)
         {
-            // Scatters ray with diffuse BRDF
-            float3 attenuation = material_BRDF(ray, hit); // attenuates and scatters
+            // Scatters ray with diffuse BRDF, or ignores interaction depending on dielectric priority
+            float3 attenuation = evaluate_material_hit(ray, hit); // attenuates and scatters
 
             
             float3 emissive = hit.material.emissive.rgb * hit.material.emissive.a;
@@ -721,7 +893,7 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
     if (id.x > (uint)ScreenParameters.x || id.y > (uint) ScreenParameters.y)
     {
         return; 
-    }
+    } 
     
     float2 uv = float2((float)id.x / ScreenParameters.x, (float)id.y / ScreenParameters.y);
     float2 uvNDC = uv * 2.0f - 1.0f;
@@ -729,6 +901,7 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
     
     float3 RayColor = float3(0.0f, 0.0f, 0.0f);
 
+    [loop]
     for (uint rayID = 0; rayID < SamplesPerPixel; rayID++)
     {
         Ray ray = get_ray(uvNDC);

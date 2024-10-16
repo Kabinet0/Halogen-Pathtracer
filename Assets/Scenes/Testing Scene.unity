@@ -219,6 +219,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 0.12941177, g: 0.35686275, b: 0.35686275, a: 1}
     indexOfRefraction: 1.1
     absorption: 0.41
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -348,6 +349,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -478,6 +480,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -578,6 +581,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -642,6 +646,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -772,6 +777,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -970,6 +976,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -1028,6 +1035,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -1190,7 +1198,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: -0.018415544, y: -0.6994121, z: 0.020206343, w: -0.71419555}
-  m_LocalPosition: {x: -7.849661, y: 3.7519922, z: -0.27434355}
+  m_LocalPosition: {x: -6.8815093, y: 7.7040205, z: -0.047842093}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1296,6 +1304,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 1, g: 1, b: 1, a: 1}
     emissionIntensity: 2
   MaxHierarchyDepth: 32
@@ -1425,6 +1434,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -1554,6 +1564,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -1684,6 +1695,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1.25
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -1798,6 +1810,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0.253191, g: 0.7058824, b: 0.16862744, a: 1}
     emissionIntensity: 3
   Radius: 40
@@ -1942,6 +1955,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -2130,6 +2144,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -2418,6 +2433,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -2476,6 +2492,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 2
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -2605,6 +2622,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1.75
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -2719,6 +2737,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -2847,6 +2866,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 1, g: 0, b: 0.76097584, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -2955,6 +2975,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0.45882356, g: 1, b: 0.5959568, a: 1}
     emissionIntensity: 5
   Radius: 0.07
@@ -3099,6 +3120,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -3228,6 +3250,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1.1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -3544,6 +3567,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 15
@@ -3688,6 +3712,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1.5
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -3781,7 +3806,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1124436478
 Transform:
   m_ObjectHideFlags: 0
@@ -3791,7 +3816,7 @@ Transform:
   m_GameObject: {fileID: 1124436477}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.5000005, z: -0, w: 0.8660252}
-  m_LocalPosition: {x: 0.47500044, y: 0.84000015, z: -2.6160004}
+  m_LocalPosition: {x: 0.47500044, y: 1.4, z: -2.6160004}
   m_LocalScale: {x: 1.4999996, y: 1.5, z: 1.4999996}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3811,12 +3836,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   material:
     color: {r: 1, g: 0.3443396, b: 0.3443396, a: 0.16862746}
-    roughness: 0.329
+    roughness: 0
     metallic: 0
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     subsurfaceColor: {r: 1, g: 0.13679248, b: 0.13679248, a: 1}
-    indexOfRefraction: 1
-    absorption: 0.52
+    indexOfRefraction: 1.1
+    absorption: 0.42
+    dielectricPriority: 2
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -3931,6 +3957,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 1, g: 0.7343199, b: 0.4575472, a: 1}
     emissionIntensity: 5
   Radius: 0.07
@@ -4075,6 +4102,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -4204,6 +4232,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -4333,6 +4362,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -4448,6 +4478,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -4592,6 +4623,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -4721,6 +4753,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1.1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 1, g: 1, b: 1, a: 1}
     emissionIntensity: 10.09
   Radius: 0.1
@@ -4935,13 +4968,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material:
-    color: {r: 0, g: 0.25, b: 0.25, a: 1}
-    roughness: 1
+    color: {r: 0, g: 0.25, b: 0.25, a: 0.11372549}
+    roughness: 0
     metallic: 0.02
     specularColor: {r: 0.801, g: 0.801, b: 0.801, a: 1}
-    subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
+    subsurfaceColor: {r: 0.5, g: 0.36084905, b: 0.36084905, a: 1}
     indexOfRefraction: 1.1
-    absorption: 0
+    absorption: 1.17
+    dielectricPriority: 1
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -5071,6 +5105,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -5272,6 +5307,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0.754717, g: 0.42752162, b: 0.09611962, a: 1}
     emissionIntensity: 5
   Radius: 1
@@ -5330,6 +5366,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1.1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -5480,6 +5517,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0.45882356, g: 1, b: 0.5959568, a: 1}
     emissionIntensity: 5
   Radius: 0.07
@@ -5609,6 +5647,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -5858,6 +5897,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -5933,6 +5973,136 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1490129026}
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1507508260
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1507508261}
+  - component: {fileID: 1507508265}
+  - component: {fileID: 1507508264}
+  - component: {fileID: 1507508263}
+  - component: {fileID: 1507508262}
+  m_Layer: 0
+  m_Name: Cube (3)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1507508261
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1507508260}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.5000005, z: -0, w: 0.8660252}
+  m_LocalPosition: {x: 1.513, y: 1.559, z: -2.483}
+  m_LocalScale: {x: 1.4999996, y: 1.5, z: 1.4999996}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1895507485}
+  m_LocalEulerAnglesHint: {x: 0, y: 30, z: 0}
+--- !u!114 &1507508262
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1507508260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40cc63cfb0d461f4394420f60095ba05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  material:
+    color: {r: 0.34509802, g: 1, b: 0.36769783, a: 0.16862746}
+    roughness: 0
+    metallic: 0
+    specularColor: {r: 1, g: 1, b: 1, a: 1}
+    subsurfaceColor: {r: 0.1372549, g: 1, b: 0.23432334, a: 1}
+    indexOfRefraction: 1.1
+    absorption: 2.06
+    dielectricPriority: 1
+    emissionColor: {r: 0, g: 0, b: 0, a: 1}
+    emissionIntensity: 0
+  MaxHierarchyDepth: 32
+--- !u!65 &1507508263
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1507508260}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1507508264
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1507508260}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1507508265
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1507508260}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &1512169626
 GameObject:
   m_ObjectHideFlags: 0
@@ -5988,6 +6158,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -6091,7 +6262,7 @@ Transform:
   m_GameObject: {fileID: 1577908284}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1.5, y: 1, z: 0}
+  m_LocalPosition: {x: 2.41, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6110,13 +6281,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material:
-    color: {r: 0.18276076, g: 0.26338905, b: 0.3490566, a: 0.043137256}
-    roughness: 0.468
-    metallic: 0.748
-    specularColor: {r: 0.801, g: 0.801, b: 0.801, a: 1}
-    subsurfaceColor: {r: 0.18431373, g: 0.2627451, b: 0.34901962, a: 1}
+    color: {r: 1, g: 1, b: 1, a: 0.043137256}
+    roughness: 0.13
+    metallic: 0
+    specularColor: {r: 1, g: 1, b: 1, a: 1}
+    subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1.1
-    absorption: 0.16
+    absorption: 0.65
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -6191,6 +6363,137 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1577908284}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1582871900
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1582871901}
+  - component: {fileID: 1582871905}
+  - component: {fileID: 1582871904}
+  - component: {fileID: 1582871903}
+  - component: {fileID: 1582871902}
+  m_Layer: 0
+  m_Name: Plane (6)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &1582871901
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582871900}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: -0.7071068, w: 0.7071068}
+  m_LocalPosition: {x: 1.34, y: 0.749, z: 3.108}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1895507485}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -90}
+--- !u!114 &1582871902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582871900}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40cc63cfb0d461f4394420f60095ba05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  material:
+    color: {r: 1, g: 0, b: 0, a: 0.14117648}
+    roughness: 0
+    metallic: 0
+    specularColor: {r: 1, g: 1, b: 1, a: 1}
+    subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
+    indexOfRefraction: 1
+    absorption: 0
+    dielectricPriority: 0
+    emissionColor: {r: 0, g: 0, b: 0, a: 1}
+    emissionIntensity: 0
+  MaxHierarchyDepth: 32
+--- !u!64 &1582871903
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582871900}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &1582871904
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582871900}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1582871905
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582871900}
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &1588502072
 GameObject:
   m_ObjectHideFlags: 0
@@ -6280,6 +6583,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -6409,6 +6713,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 1, g: 1, b: 1, a: 1}
     emissionIntensity: 5
   MaxHierarchyDepth: 32
@@ -6523,6 +6828,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -6652,6 +6958,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 1, g: 0.45882356, b: 0.8841572, a: 1}
     emissionIntensity: 5
   Radius: 0.07
@@ -6781,6 +7088,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -6925,6 +7233,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0.11792451, g: 1, b: 0.12678605, a: 1}
     emissionIntensity: 2
   Radius: 40
@@ -7255,6 +7564,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -7384,6 +7694,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -7489,6 +7800,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1490129027}
+  - {fileID: 1582871901}
   - {fileID: 1629837699}
   - {fileID: 817251706}
   - {fileID: 1260221361}
@@ -7497,6 +7809,7 @@ Transform:
   - {fileID: 1321459750}
   - {fileID: 138242792}
   - {fileID: 1124436478}
+  - {fileID: 1507508261}
   m_Father: {fileID: 434614377}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1902308954
@@ -7539,6 +7852,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -7677,12 +7991,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   material:
     color: {r: 1, g: 1, b: 1, a: 0}
-    roughness: 1
+    roughness: 0.225
     metallic: 0
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     subsurfaceColor: {r: 1, g: 0.13679248, b: 0.13679248, a: 1}
     indexOfRefraction: 1.1
-    absorption: 0.52
+    absorption: 0.22
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
@@ -7797,6 +8112,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   Radius: 0.5
@@ -7990,6 +8306,7 @@ MonoBehaviour:
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
     absorption: 0
+    dielectricPriority: 0
     emissionColor: {r: 1, g: 1, b: 1, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32

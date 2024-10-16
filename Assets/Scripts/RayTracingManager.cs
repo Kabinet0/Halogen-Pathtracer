@@ -15,6 +15,7 @@ public struct HalogenMaterial
     public Color subsurfaceColor;
     [Range(1, 8)] public float indexOfRefraction;
     [Range(0, 4)] public float absorption;
+    public int dielectricPriority;
 
     [Header("Emission")]
     public Color emissionColor;
@@ -29,6 +30,7 @@ public struct HalogenMaterial
         metallic = 0;
         indexOfRefraction = 1;
         absorption = 0;
+        dielectricPriority = 0;
 
         emissionColor = Color.black;
         emissionIntensity = 0;

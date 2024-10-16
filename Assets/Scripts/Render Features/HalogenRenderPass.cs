@@ -5,13 +5,17 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEditor.Rendering;
 using UnityEngine.Experimental.Rendering;
+using Unity.Mathematics;
+using System.Linq;
 
 //[StructLayout(LayoutKind.Sequential)]
 public struct HalogenSphere
 {
     public Vector3 center;
     public float radius;
-    public PackedHalogenMaterial material;
+
+    public uint materialIndex;
+    
     public Vector3 boundingCornerA;
     public Vector3 boundingCornerB;
 }
@@ -30,17 +34,26 @@ public struct HalogenMeshData
     public Matrix4x4 worldToLocal;
     public Matrix4x4 localToWorld;
 }
+
+public struct PackedRayMedium
+{
+    public float indexOfRefraction;
+    public Vector3 absorption;
+    public int priority;
+    public uint materialID;
+}
+
 public struct PackedHalogenMaterial
 {
+    public uint materialID;
+
     public Vector4 albedo;
     public Vector4 specularAlbedo;
     public float metallic;
     public float roughness;
     public Vector4 emissive;
     // transmission properties
-    public Vector3 subsurfaceColor;
-    public float indexOfRefraction;
-    public float absorption;
+    public PackedRayMedium rayMedium;
 }
 
 public struct HalogenTriangle
@@ -110,6 +123,8 @@ public class HalogenRenderPass : ScriptableRenderPass
     List<PackedHalogenMaterial> materialList = new List<PackedHalogenMaterial>();
     List<HalogenTriangle> triangleList = new List<HalogenTriangle>();
     List<BVHEntry> BLASList = new List<BVHEntry>();
+
+    List<HalogenMaterial> unpackedHalogenMaterials = new List<HalogenMaterial>();
 
     private readonly int sphereStructStride;
 
@@ -345,18 +360,25 @@ public class HalogenRenderPass : ScriptableRenderPass
         BLASBuffer?.Release();
     }
 
-    private PackedHalogenMaterial PackHalogenMaterial(HalogenMaterial material)
+    private PackedHalogenMaterial PackHalogenMaterial(HalogenMaterial material, int materialID)
     {
         PackedHalogenMaterial packedMaterial = new PackedHalogenMaterial();
+        PackedRayMedium packedMedium = new PackedRayMedium();
         packedMaterial.albedo = (Vector4)material.color;
         packedMaterial.specularAlbedo = (Vector4)material.specularColor;
         packedMaterial.metallic = material.metallic;
         packedMaterial.roughness = material.roughness;
-        packedMaterial.indexOfRefraction = material.indexOfRefraction;
         packedMaterial.emissive = new Vector4(material.emissionColor.r, material.emissionColor.g, material.emissionColor.b, material.emissionIntensity);
-        packedMaterial.absorption = Mathf.Max(material.absorption, Mathf.Epsilon);
-        packedMaterial.subsurfaceColor = (Vector3)(Vector4)material.subsurfaceColor;
 
+        packedMedium.absorption = ((Vector3)(Vector4)material.subsurfaceColor) / Mathf.Max(material.absorption, Mathf.Epsilon);
+        packedMedium.indexOfRefraction = material.indexOfRefraction;
+        packedMedium.priority = material.dielectricPriority;
+        packedMedium.materialID = (uint)materialID;
+        //packedMedium.mediumHash = (uint)(packedMedium.indexOfRefraction * packedMedium.priority + packedMedium.absorption.x * packedMedium.absorption.y * packedMedium.absorption.z); // Todo: this is pretty bad
+
+        packedMaterial.rayMedium = packedMedium;
+
+        packedMaterial.materialID = (uint)materialID;
         return packedMaterial;
     }
 
@@ -369,6 +391,8 @@ public class HalogenRenderPass : ScriptableRenderPass
         triangleList.Clear();
         BLASList.Clear();
 
+        unpackedHalogenMaterials.Clear();
+
         // Fill sphere list
         foreach (RayTracingSphere sphere in RayTracingManager.GetSphereList().Values){
             // Pack struct with sphere data
@@ -376,7 +400,7 @@ public class HalogenRenderPass : ScriptableRenderPass
             sphereStruct.center = sphere.transform.position;
             sphereStruct.radius = sphere.GetRadius();
 
-            sphereStruct.material = PackHalogenMaterial(sphere.material);
+            sphereStruct.materialIndex = PackMaterialToList(sphere.material);
 
             sphereStruct.boundingCornerA = sphereStruct.center - (Vector3.one * sphereStruct.radius); // Lower corner
             sphereStruct.boundingCornerB = sphereStruct.center + (Vector3.one * sphereStruct.radius); // Upper corner
@@ -390,7 +414,7 @@ public class HalogenRenderPass : ScriptableRenderPass
         foreach (RayTracingMesh mesh in RayTracingManager.GetMeshList().Values)
         {
             // Add to material list & get index
-            uint materialIndex = AddMaterialToList(PackHalogenMaterial(mesh.material));
+            uint materialIndex = PackMaterialToList(mesh.material);
 
             // Copy triangles from mesh into list
             triangleList.InsertRange(numTrianglesAdded, mesh.GetPackedTriangles());
@@ -421,14 +445,29 @@ public class HalogenRenderPass : ScriptableRenderPass
         cmd.SetBufferData(BLASBuffer, BLASList);
     }
 
-    uint AddMaterialToList(PackedHalogenMaterial material)
+    //uint AddMaterialToList(PackedHalogenMaterial material)
+    //{
+    //    int materialIndex = materialList.Count;
+    //    if (materialList.Contains(material)) {
+    //        materialIndex = materialList.IndexOf(material);
+    //    }
+    //    else {
+    //        materialList.Add(material);
+    //    }
+
+    //    return (uint)materialIndex;
+    //}
+
+    uint PackMaterialToList(HalogenMaterial material)
     {
         int materialIndex = materialList.Count;
-        if (materialList.Contains(material)) {
-            materialIndex = materialList.IndexOf(material);
+        if (unpackedHalogenMaterials.Contains(material)) {
+            materialIndex = unpackedHalogenMaterials.IndexOf(material);
         }
-        else {
-            materialList.Add(material);
+        else
+        {
+            unpackedHalogenMaterials.Add(material);
+            materialList.Add(PackHalogenMaterial(material, materialIndex));
         }
 
         return (uint)materialIndex;
