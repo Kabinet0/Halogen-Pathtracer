@@ -100,6 +100,9 @@ public class HalogenRenderPass : ScriptableRenderPass
     int TriangleDebugDisplayRange;
     int BoxDebugDisplayRange;
 
+    Cubemap EnvironmentCubemap;
+    bool UseEnvironmentCubemap;
+
     Material AccumulationMaterial;
     Vector3 PriorCameraPosition;
     Quaternion PriorCameraRotation;
@@ -170,6 +173,16 @@ public class HalogenRenderPass : ScriptableRenderPass
         AccumulationMaterial = CoreUtils.CreateEngineMaterial(_settings.AccumulationShader);
 
         Accumulate = _settings.Accumulate;
+
+        UseEnvironmentCubemap = _settings.useHDRISky;
+        if (UseEnvironmentCubemap)  {
+            if (_settings.environmentCubemap != null) {
+                EnvironmentCubemap = _settings.environmentCubemap;
+            }
+            else  {
+                UseEnvironmentCubemap = false;
+            }
+        }
 
         switch (_settings.DebugMode)
         {
@@ -309,6 +322,9 @@ public class HalogenRenderPass : ScriptableRenderPass
             cmd.SetComputeFloatParam(halogenShader, "focalPlaneDistance", FocalPlaneDistance);
             cmd.SetComputeFloatParam(halogenShader, "focalConeAngle", ApertureAngle);
 
+            cmd.SetComputeTextureParam(halogenShader, kernelIndex, "EnvironmentCubemap", EnvironmentCubemap);
+            cmd.SetComputeIntParam(halogenShader, "UseEnvironmentCubemap", UseEnvironmentCubemap ? 1 : 0);
+
             cmd.SetComputeTextureParam(halogenShader, kernelIndex, "Output", rtPathtracingBuffer);
             cmd.SetComputeTextureParam(halogenShader, kernelIndex, "OutputSecondBounce", rtSecondBounceBuffer);
 
@@ -370,7 +386,8 @@ public class HalogenRenderPass : ScriptableRenderPass
         packedMaterial.roughness = material.roughness;
         packedMaterial.emissive = new Vector4(material.emissionColor.r, material.emissionColor.g, material.emissionColor.b, material.emissionIntensity);
 
-        packedMedium.absorption = ((Vector3)(Vector4)material.subsurfaceColor) / Mathf.Max(material.absorption, Mathf.Epsilon);
+        Vector3 vec = ((Vector3)(Vector4)material.subsurfaceColor);
+        packedMedium.absorption = new Vector3(1 / vec.x, 1 / vec.y, 1 / vec.z) * Mathf.Max(material.absorption, 0);
         packedMedium.indexOfRefraction = material.indexOfRefraction;
         packedMedium.priority = material.dielectricPriority;
         packedMedium.materialID = (uint)materialID;

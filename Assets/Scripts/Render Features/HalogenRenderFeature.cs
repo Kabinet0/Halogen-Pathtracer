@@ -40,6 +40,10 @@ public struct HalogenSettings
     public float FocalPlaneDistance;
     [Range(0, 90)] public float ApertureAngle;
 
+    [Header("Environment")]
+    public bool useHDRISky;
+    public Cubemap environmentCubemap;
+
     [Header("Debug")]
 
     public bool FirstInteractionOnly;

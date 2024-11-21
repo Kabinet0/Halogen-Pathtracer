@@ -60,6 +60,9 @@ MonoBehaviour:
     FarPlaneDistance: 5000
     FocalPlaneDistance: 1.82
     ApertureAngle: 0
+    useHDRISky: 1
+    environmentCubemap: {fileID: 8900000, guid: 84a08f961f57d8343a1bc1c04275dd0b,
+      type: 3}
     FirstInteractionOnly: 1
     DebugMode: 0
     BoundsDebugMode: 0

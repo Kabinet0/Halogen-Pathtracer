@@ -1,6 +1,9 @@
 #pragma kernel HalogenCompute
 #pragma use_dxc
 
+#define QUESTIONABLE_IMPORTANCE_SAMPLING 1
+
+static const int c_default_hdri_mipmap = 1;
 static const float PI = radians(180);
 static const float epsilon = 0.00001f;
 static const float empty_medium_IOR = 1;
@@ -28,6 +31,10 @@ float4 CameraParameters; // x: Camera X
 
 RWTexture2D<float4> Output;
 RWTexture2D<float4> OutputSecondBounce;
+
+int UseEnvironmentCubemap;
+TextureCube EnvironmentCubemap;
+SamplerState EnviornmentCubemapSampler_trilinear_repeat;
 
 uint SamplesPerPixel;
 uint MaxBounces;
@@ -194,10 +201,13 @@ float2 get_random_point_circle(float radius)
     return float2(cos(theta) * radius * distAlongRadius, sin(theta) * radius * distAlongRadius);
 }
 
-float3 sample_sky(Ray ray)
+float3 sample_sky(Ray ray, int level = c_default_hdri_mipmap)
 {
     // float v = 0.5f * (ray.dir.y + 1.0f);
     // return lerp(float3(0.1f, 0.1f, 0.1f), float3(0.5f, 0.7f, 1.0f), v) * 0.7f;
+    if (UseEnvironmentCubemap > 0) {
+        return EnvironmentCubemap.SampleLevel(EnviornmentCubemapSampler_trilinear_repeat, ray.dir, level);
+    }
     return float3(0.0f, 0.0f, 0.0f);
 }
 
@@ -529,16 +539,17 @@ float3 microfacet_normal_distribution(float3 halfwayVector, float roughness)
     return float3(1, 1, 1);
 }
 
-float3 refract(float3 incident, float3 normal, float n1, float n2) {
+float3 refract(float3 incident, float3 normal, float n1, float n2, inout bool totalInternalReflection) {
     float cos_theta = min(dot(-incident, normal), 1.0);
     float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
-    
+     
     float n1_over_n2 = n1 / n2;
 
     if (n1_over_n2 * sin_theta > 1.0) {
+        // handle total internal reflection
+        totalInternalReflection = true;
         return specular_scatter(incident, normal);
     } else {
-        // handle total internal reflection
         float3 refracted_perp =  n1_over_n2 * (incident + cos_theta*normal);
         float3 refracted_parallel = -sqrt(abs(1.0 - (length(refracted_perp) * length(refracted_perp)))) * normal;
         return refracted_perp + refracted_parallel;
@@ -634,18 +645,13 @@ float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium curren
 
     ray.origin = hit.pos;
 
-    
-    // todo remove
-    float n_currentMedium = currentMedium.indexOfRefraction;
-    float n_hitMedium = hitMedium.indexOfRefraction;
-
     bool do_refraction = random_value() > hit.material.albedo.w;
     if (!do_refraction) {
         //// Regular bounce ////
         attenuation = hit.material.albedo.rgb;
         float3 diffuseRayDir = lambertain_scatter(ray.dir, hit.normal);
 
-        bool do_specular_scatter = random_value() < ((hit.material.metallic > 0) ? schlick_adjusted_specular(n_currentMedium, n_hitMedium, hit.normal, ray.dir,  hit.material.metallic, 1) : hit.material.metallic);
+        bool do_specular_scatter = random_value() < ((hit.material.metallic > 0) ? schlick_adjusted_specular(currentMedium.indexOfRefraction, hitMedium.indexOfRefraction, hit.normal, ray.dir,  hit.material.metallic, 1) : hit.material.metallic);
         if (do_specular_scatter)
         {
             float3 specularRayDir = specular_scatter(ray.dir, hit.normal);
@@ -666,11 +672,24 @@ float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium curren
     }  else {
         //// Do refraction ////
         attenuation = float3(1, 1, 1);
-        ray.dir = refract(ray.dir, hit.normal, n_currentMedium, n_hitMedium);
+        bool totalInternalReflection = false;
+        ray.dir = refract(ray.dir, hit.normal, currentMedium.indexOfRefraction, hitMedium.indexOfRefraction, totalInternalReflection);
 
-        float3 diffuseRefractionDir = normalize(hit.normal + get_random_unit_vector());
-        ray.dir = lerp(ray.dir, diffuseRefractionDir, hit.material.roughness * hit.material.roughness);
-        ray.origin = hit.pos - hit.normal * 0.0001; // offset from intersection for floating point reasons, but in the opposite direction for refraction
+
+
+        if (totalInternalReflection) {
+            float3 diffuseRefractionDir = normalize(hit.normal + get_random_unit_vector());
+            ray.dir = lerp(ray.dir, diffuseRefractionDir, hit.material.roughness * hit.material.roughness);
+            ray.origin = hit.pos - hit.normal * 0.0001; // offset from intersection for floating point reasons, but in the opposite direction for refraction
+            //attenuation = float3(1000, 1000, 1000);
+            
+        } else {
+            float3 diffuseRefractionDir = normalize(-hit.normal + get_random_unit_vector());
+            ray.dir = lerp(ray.dir, diffuseRefractionDir, hit.material.roughness * hit.material.roughness);
+            ray.origin = hit.pos - hit.normal * 0.0001; // offset from intersection for floating point reasons, but in the opposite direction for refraction
+            
+        }
+        
     }
 
 
@@ -737,7 +756,7 @@ float3 evaluate_material_hit(inout Ray ray, in RayHit hit) {
 
     if (currentMedium.materialID != -1) {
         //// Handle absorption //// 
-        attenuation *= exp(-(1/currentMedium.absorption) * hit.rayT);
+        attenuation *= exp(-currentMedium.absorption * hit.rayT);
     }
 
 
@@ -795,6 +814,7 @@ float3 trace_ray(in Ray ray)
 {
     float3 accumulatedColor = float3(0, 0, 0);
     float3 lightAttenuation = float3(1, 1, 1); 
+    float accumulatedRoughnes = 0;
     
     for (uint rayInteractions = 0; rayInteractions <= MaxBounces; rayInteractions++)
     {
@@ -816,11 +836,17 @@ float3 trace_ray(in Ray ray)
             
             accumulatedColor += emissive * lightAttenuation;
             lightAttenuation *= attenuation; 
-            
+
+            // accumulate roughness accross bounces to do some really bad importance sampling with mipmaps
+            accumulatedRoughnes += hit.material.roughness * lightAttenuation;
         }
         else
         {
-            accumulatedColor += sample_sky(ray) * lightAttenuation; // Emissive
+            #if QUESTIONABLE_IMPORTANCE_SAMPLING
+                accumulatedColor += sample_sky(ray, round(1.0f + (accumulatedRoughnes * 2.0f))) * lightAttenuation; // Emissive
+            #else
+                accumulatedColor += sample_sky(ray) * lightAttenuation; // Emissive
+            #endif
             break;
         }
     }
