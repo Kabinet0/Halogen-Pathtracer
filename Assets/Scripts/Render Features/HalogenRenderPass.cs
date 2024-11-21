@@ -91,6 +91,8 @@ public class HalogenRenderPass : ScriptableRenderPass
     bool Accumulate;
     bool AccumulationBufferDirty;
 
+    int EnvironmentMipLevel;
+
     float NearPlaneDistance;
     float FarPlaneDistance;
     float FocalPlaneDistance;
@@ -167,6 +169,7 @@ public class HalogenRenderPass : ScriptableRenderPass
         FarPlaneDistance = Mathf.Max(NearPlaneDistance + Mathf.Epsilon, _settings.FarPlaneDistance);
 
         ApertureAngle = Mathf.Clamp(_settings.ApertureAngle, 0, 89.9f);
+        EnvironmentMipLevel = math.clamp(_settings.EnvironmentMipLevel, 0, 2);
 
         FrameCount = 1;
         AccumulationBufferDirty = true;
@@ -309,6 +312,7 @@ public class HalogenRenderPass : ScriptableRenderPass
             cmd.SetComputeBufferParam(halogenShader, kernelIndex, "BLASBuffer", BLASBuffer);
 
             cmd.SetComputeIntParam(halogenShader, "RandomSeed", Accumulate ? FrameCount : 1);
+            cmd.SetComputeIntParam(halogenShader, "default_hdri_mipmap", EnvironmentMipLevel);
 
             cmd.SetComputeVectorParam(halogenShader, "BufferCounts", new Vector4(sphereList.Count, meshList.Count, 0, 0));
             cmd.SetComputeIntParam(halogenShader, "SamplesPerPixel", SamplesPerPixel);

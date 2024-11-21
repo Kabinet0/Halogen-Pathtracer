@@ -3946,7 +3946,7 @@ Transform:
   m_GameObject: {fileID: 1124436477}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.5000005, z: -0, w: 0.8660252}
-  m_LocalPosition: {x: 0.47500044, y: 1.4, z: -2.6160004}
+  m_LocalPosition: {x: 3.83, y: 1.4, z: -2.47}
   m_LocalScale: {x: 2.6988432, y: 2.698844, z: 2.6988432}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5879,6 +5879,7 @@ GameObject:
   - component: {fileID: 1476872504}
   - component: {fileID: 1476872503}
   - component: {fileID: 1476872502}
+  - component: {fileID: 1476872506}
   m_Layer: 0
   m_Name: (Eight) Meterstick
   m_TagString: Untagged
@@ -5972,6 +5973,30 @@ Transform:
   m_Children: []
   m_Father: {fileID: 330585546}
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
+--- !u!114 &1476872506
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1476872501}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40cc63cfb0d461f4394420f60095ba05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  material:
+    color: {r: 1, g: 1, b: 1, a: 1}
+    roughness: 1
+    metallic: 0
+    specularColor: {r: 1, g: 1, b: 1, a: 1}
+    subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
+    indexOfRefraction: 1
+    absorption: 0
+    dielectricPriority: 0
+    emissionColor: {r: 0, g: 0, b: 0, a: 1}
+    emissionIntensity: 0
+  MaxHierarchyDepth: 32
 --- !u!1 &1490129026
 GameObject:
   m_ObjectHideFlags: 0

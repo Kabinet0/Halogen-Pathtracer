@@ -21,7 +21,7 @@ public enum HalogenMeshBoundsDebugMode
 
 
 [System.Serializable]
-public struct HalogenSettings
+public class HalogenSettings
 {
     [Header("General")]
     public ComputeShader HalogenShader;
@@ -43,6 +43,7 @@ public struct HalogenSettings
     [Header("Environment")]
     public bool useHDRISky;
     public Cubemap environmentCubemap;
+    [Range(0, 2)] public int EnvironmentMipLevel = 1; 
 
     [Header("Debug")]
 

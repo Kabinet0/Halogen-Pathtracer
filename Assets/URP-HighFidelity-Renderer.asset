@@ -63,6 +63,7 @@ MonoBehaviour:
     useHDRISky: 1
     environmentCubemap: {fileID: 8900000, guid: 84a08f961f57d8343a1bc1c04275dd0b,
       type: 3}
+    EnvironmentMipLevel: 1
     FirstInteractionOnly: 1
     DebugMode: 0
     BoundsDebugMode: 0

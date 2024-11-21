@@ -3,7 +3,6 @@
 
 #define QUESTIONABLE_IMPORTANCE_SAMPLING 1
 
-static const int c_default_hdri_mipmap = 1;
 static const float PI = radians(180);
 static const float epsilon = 0.00001f;
 static const float empty_medium_IOR = 1;
@@ -42,6 +41,8 @@ uint MaxBounces;
 uint HalogenDebugMode;
 uint TriangleDebugDisplayRange;
 uint BoxDebugDisplayRange;
+
+int default_hdri_mipmap;
 
 float focalPlaneDistance;
 float focalConeAngle;
@@ -201,7 +202,7 @@ float2 get_random_point_circle(float radius)
     return float2(cos(theta) * radius * distAlongRadius, sin(theta) * radius * distAlongRadius);
 }
 
-float3 sample_sky(Ray ray, int level = c_default_hdri_mipmap)
+float3 sample_sky(Ray ray, int level = default_hdri_mipmap)
 {
     // float v = 0.5f * (ray.dir.y + 1.0f);
     // return lerp(float3(0.1f, 0.1f, 0.1f), float3(0.5f, 0.7f, 1.0f), v) * 0.7f;
@@ -843,7 +844,7 @@ float3 trace_ray(in Ray ray)
         else
         {
             #if QUESTIONABLE_IMPORTANCE_SAMPLING
-                accumulatedColor += sample_sky(ray, round(1.0f + (accumulatedRoughnes * 2.0f))) * lightAttenuation; // Emissive
+                accumulatedColor += sample_sky(ray, round(default_hdri_mipmap + (accumulatedRoughnes * 2.0f))) * lightAttenuation; // Emissive
             #else
                 accumulatedColor += sample_sky(ray) * lightAttenuation; // Emissive
             #endif
