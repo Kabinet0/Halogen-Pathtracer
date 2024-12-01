@@ -1,5 +1,6 @@
 using UnityEngine.Rendering.Universal;
 using UnityEngine;
+using System.Collections.Generic;
 
 
 public enum HalogenDebugMode {
@@ -73,6 +74,11 @@ public class HalogenRenderFeature : ScriptableRendererFeature
         CameraType cameraType = renderingData.cameraData.cameraType;
         if (cameraType == CameraType.Preview) return; // Ignore feature for editor/inspector previews & asset thumbnails
         if (!settings.ShowInSceneView && cameraType == CameraType.SceneView) return;
+
+        
+        if (Application.isPlaying) {
+            HalogenDebugUI.AddFrameToAverage(settings.SamplesPerPixel * renderingData.cameraData.camera.pixelWidth * renderingData.cameraData.camera.pixelHeight);
+        }
 
         renderer.EnqueuePass(halogenPass);
     }

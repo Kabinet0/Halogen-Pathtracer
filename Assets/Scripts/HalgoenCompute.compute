@@ -1,6 +1,20 @@
 #pragma kernel HalogenCompute
 #pragma use_dxc
 
+// TODO
+// [-] Absorbtion does something to opaque objects for some reason?
+// [-] Speckles on green panel in cornel box (Importance sampling bug)
+// [-] Invert priority for dielectrics to make more sense
+// [-] Better importance sampling controls
+// [-] Basic instancing support
+// [-] Solve BVH Splitting errors
+// [-] Add SAH to BVH
+// [-] TLAS
+// [-] Punctual Lights
+// [-] Multiple Importance Sampling
+// [-] More debug views (roughness, whatever)
+ 
+
 #define QUESTIONABLE_IMPORTANCE_SAMPLING 1
 
 static const float PI = radians(180);
@@ -164,17 +178,69 @@ StructuredBuffer<Sphere> SphereList;
 StructuredBuffer<Mesh> MeshList;
 float4 BufferCounts; // x: Spheres, y: MeshData
 
+uint u32_hash(uint value = randomState) {
+    uint state = value * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    uint val = (word >> 22u) ^ word;
+    randomState = val;
+    return val;
+}
+
+
 // Literal Sebastian Lague theft: https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=679s
 // Also discovered (independantly I swear) from on https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ 
 float random_value()
 {
-    uint state = randomState * 747796405u + 2891336453u;
-    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-    uint val = (word >> 22u) ^ word;
-    randomState = val;
-    return (float) val / 4294967296.0f;
+    return (float) u32_hash() / 4294967296.0f;
 }
 
+// Todo add seed to this call
+// Thanks to https://psychopath.io/post/2021_01_30_building_a_better_lk_hash
+// as well as https://jcgt.org/published/0009/04/01/
+uint owen_scramble(uint value) {
+    // Randomize inital seed value
+    // replace with u32 hash
+    uint seed = u32_hash();
+
+    uint x = reversebits(value);
+
+    // // Original Laine-Karras hash.
+    // x = x.wrapping_add(seed);
+    // x ^= x.wrapping_mul(0x6c50b47c);
+    // x ^= x.wrapping_mul(0xb82f1e52);
+    // x ^= x.wrapping_mul(0xc7afe638);
+    // x ^= x.wrapping_mul(0x8d22f6e6);
+
+    x ^= x * 0x3d20adea;
+    x += seed;
+    x *= (seed >> 16) | 1;
+    x ^= x * 0x05526c56;
+    x ^= x * 0x53a22864;
+
+    return reversebits(x);
+}
+
+uint sobol(uint index) {
+    uint p = 0;
+    uint d = 0x80000000;
+
+    for (; index != 0; index >>= 1) {
+        if ((index & 1) != 0) {
+            p ^= d;
+        }
+        d >>= 1;
+    }
+
+    return p;
+}
+
+uint u32_owen_scrambled_sobol(uint index) {
+    return owen_scramble(sobol(index));
+}
+
+uint float_owen_scrambled_sobol(uint index) {
+    return u32_owen_scrambled_sobol(index) / 4294967296.0f;
+}
 
 float3 get_random_unit_vector()
 {
@@ -829,7 +895,7 @@ float3 trace_ray(in Ray ray)
         // Verify ray hit something, if distance to hit is less than far plane
         if (hit.rayT < ViewParameters.w)
         {
-            // Scatters ray with diffuse BRDF, or ignores interaction depending on dielectric priority
+            // Scatters ray with diffuse BRDF, or ignores interaction de pending on dielectric priority
             float3 attenuation = evaluate_material_hit(ray, hit); // attenuates and scatters
 
             

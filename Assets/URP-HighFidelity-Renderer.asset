@@ -58,17 +58,17 @@ MonoBehaviour:
     MaxBounces: 12
     NearPlaneDistance: 0.1
     FarPlaneDistance: 5000
-    FocalPlaneDistance: 1.82
+    FocalPlaneDistance: 8.18
     ApertureAngle: 0
     useHDRISky: 1
     environmentCubemap: {fileID: 8900000, guid: 84a08f961f57d8343a1bc1c04275dd0b,
       type: 3}
     EnvironmentMipLevel: 1
-    FirstInteractionOnly: 1
+    FirstInteractionOnly: 0
     DebugMode: 0
     BoundsDebugMode: 0
-    TriangleDebugDisplayRange: 114
-    BoxDebugDisplayRange: 28
+    TriangleDebugDisplayRange: 100
+    BoxDebugDisplayRange: 153
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
