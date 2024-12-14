@@ -44,6 +44,8 @@ public class RayTracingManager
 
     private static uint sphereIDCount = 0, meshIDCount = 0;
 
+    private static bool sphereListDirty = true, meshListDirty = true;
+
     public static uint AddToSphereList(RayTracingSphere sphere)
     {
         uint sphereID = sphere.GetID();
@@ -62,7 +64,8 @@ public class RayTracingManager
         {
             Debug.Log("Trying to add duplicate ray tracing sphere with ID " + sphereID);
         }
-        
+
+        sphereListDirty = true;
         return sphereID;
     }
 
@@ -85,16 +88,19 @@ public class RayTracingManager
             Debug.Log("Trying to add duplicate ray tracing mesh with ID " + meshID);
         }
 
+        meshListDirty = true;
         return meshID;
     }
 
     public static void RemoveFromSphereList(RayTracingSphere sphere)
     {
+        markSphereListDirty();
         rayTracingSphereList.Remove(sphere.GetID());
     }
 
     public static void RemoveFromMeshList(RayTracingMesh mesh)
     {
+        markSphereListDirty();
         rayTracingMeshList.Remove(mesh.GetID());
     }
 
@@ -106,5 +112,34 @@ public class RayTracingManager
     public static ref Dictionary<uint, RayTracingMesh> GetMeshList()
     {
         return ref rayTracingMeshList;
+    }
+
+    public static void markSphereListDirty()
+    {
+        sphereListDirty = true;
+    }
+
+    public static void markMeshListDirty()
+    {
+        meshListDirty = true;
+    }
+
+    public static void markSphereListClean()
+    {
+        sphereListDirty = false;
+    }
+
+    public static void markMeshListClean()
+    {
+        meshListDirty = false;
+    }
+
+    public bool getMeshListDirty() { 
+        return meshListDirty;
+    }
+
+    public bool getSphereListDirty()
+    {
+        return sphereListDirty;
     }
 }

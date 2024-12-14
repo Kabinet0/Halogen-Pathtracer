@@ -88,8 +88,12 @@ public class HalogenRenderPass : ScriptableRenderPass
     int SamplesPerPixel;
     int MaxBounces;
 
+    int MaxAccumulatedFrames;
+
     bool Accumulate;
     bool AccumulationBufferDirty;
+    bool ObjectBuffersDirty;
+    bool UnlimitedSampling;
 
     int EnvironmentMipLevel;
 
@@ -141,6 +145,7 @@ public class HalogenRenderPass : ScriptableRenderPass
 
     private readonly int materialStructStride;
 
+    private readonly bool AlwaysRefreshObjectBuffers = false;
 
     private int FrameCount;
 
@@ -173,9 +178,12 @@ public class HalogenRenderPass : ScriptableRenderPass
 
         FrameCount = 1;
         AccumulationBufferDirty = true;
+        ObjectBuffersDirty = true;
         AccumulationMaterial = CoreUtils.CreateEngineMaterial(_settings.AccumulationShader);
 
         Accumulate = _settings.Accumulate;
+        MaxAccumulatedFrames = math.max(_settings.MaxAccumulatedFrames, 1);
+        UnlimitedSampling = _settings.UnlimitedSampling;
 
         UseEnvironmentCubemap = _settings.useHDRISky;
         if (UseEnvironmentCubemap)  {
@@ -249,6 +257,7 @@ public class HalogenRenderPass : ScriptableRenderPass
     {
         FrameCount = 1;
         AccumulationBufferDirty = true;
+        ObjectBuffersDirty = true;
         //Debug.Log("Clearing buffer");
     }
 
@@ -277,92 +286,115 @@ public class HalogenRenderPass : ScriptableRenderPass
 
         PriorCameraPosition = cameraTransform.position;
         PriorCameraRotation = cameraTransform.rotation;
-        
 
-        UpdateObjectBuffers(cmd);
+        if (ObjectBuffersDirty || AlwaysRefreshObjectBuffers) {
+            UpdateObjectBuffers(cmd);
+            ObjectBuffersDirty = false;
+        }
 
         using (new ProfilingScope(cmd, _profilingSampler))
         {
             RTHandle rtCameraColor = renderingData.cameraData.renderer.cameraColorTargetHandle;
             Camera camera = renderingData.cameraData.camera;
 
-            if (Accumulate)
-            {
-                // Copy previous result to accumulation buffer
-                Blitter.BlitCameraTexture(cmd, rtBackBuffer, rtAccumulationBuffer);
-            }
             
-
-            // Calculate w/2 and h/2 for clipping plane
-            float nClip = NearPlaneDistance;
-            float h = Mathf.Tan(Mathf.Deg2Rad * camera.fieldOfView * 0.5f) * nClip;
-            float w = camera.aspect * h;
-
-
-            cmd.SetComputeMatrixParam(halogenShader, "CamLocalToWorldMatrix", camera.transform.localToWorldMatrix);
-            cmd.SetComputeVectorParam(halogenShader, "ScreenParameters", new Vector3(camera.pixelWidth, camera.pixelHeight, 0));
-            cmd.SetComputeVectorParam(halogenShader, "ViewParameters", new Vector4(w, h, nClip, FarPlaneDistance));
-            cmd.SetComputeVectorParam(halogenShader, "CameraParameters", camera.transform.position);
-
-            
-            cmd.SetComputeBufferParam(halogenShader, kernelIndex, "MeshList", meshBuffer);
-            cmd.SetComputeBufferParam(halogenShader, kernelIndex, "SphereList", sphereBuffer);
-            cmd.SetComputeBufferParam(halogenShader, kernelIndex, "MaterialList", materialBuffer);
-            cmd.SetComputeBufferParam(halogenShader, kernelIndex, "TriangleBuffer", triangleBuffer);
-            cmd.SetComputeBufferParam(halogenShader, kernelIndex, "BLASBuffer", BLASBuffer);
-
-            cmd.SetComputeIntParam(halogenShader, "RandomSeed", Accumulate ? FrameCount : 1);
-            cmd.SetComputeIntParam(halogenShader, "default_hdri_mipmap", EnvironmentMipLevel);
-
-            cmd.SetComputeVectorParam(halogenShader, "BufferCounts", new Vector4(sphereList.Count, meshList.Count, 0, 0));
-            cmd.SetComputeIntParam(halogenShader, "SamplesPerPixel", SamplesPerPixel);
-            cmd.SetComputeIntParam(halogenShader, "MaxBounces", MaxBounces);
-
-            // Debugging parameters
-            cmd.SetComputeIntParam(halogenShader, "HalogenDebugMode", HalogenDebugMode);
-            cmd.SetComputeIntParam(halogenShader, "TriangleDebugDisplayRange", TriangleDebugDisplayRange);
-            cmd.SetComputeIntParam(halogenShader, "BoxDebugDisplayRange", BoxDebugDisplayRange);
-
-            cmd.SetComputeFloatParam(halogenShader, "focalPlaneDistance", FocalPlaneDistance);
-            cmd.SetComputeFloatParam(halogenShader, "focalConeAngle", ApertureAngle);
-
-            cmd.SetComputeTextureParam(halogenShader, kernelIndex, "EnvironmentCubemap", EnvironmentCubemap);
-            cmd.SetComputeIntParam(halogenShader, "UseEnvironmentCubemap", UseEnvironmentCubemap ? 1 : 0);
-
-            cmd.SetComputeTextureParam(halogenShader, kernelIndex, "Output", rtPathtracingBuffer);
-            cmd.SetComputeTextureParam(halogenShader, kernelIndex, "OutputSecondBounce", rtSecondBounceBuffer);
-
-            //Debug.Log("Dispatching " + Mathf.CeilToInt((float)camera.pixelWidth / TileSize) + " X Tiles for an X resolution of " + camera.pixelWidth);
-
-            // Perform path tracing
-            cmd.DispatchCompute(halogenShader, kernelIndex, Mathf.CeilToInt(camera.pixelWidth / (float)TileSize), Mathf.CeilToInt(camera.pixelHeight / (float)TileSize), 1);
-
-
-            AccumulationMaterial.SetTexture("_AccumulationBuffer", rtAccumulationBuffer);
-            AccumulationMaterial.SetInteger("_FrameCount", FrameCount);
-
-            if (AccumulationBufferDirty)
+            if (!UnlimitedSampling && FrameCount >= MaxAccumulatedFrames)
             {
-                CoreUtils.SetRenderTarget(cmd, rtAccumulationBuffer);
-                CoreUtils.ClearRenderTarget(cmd, ClearFlag.Color, Color.black);
-                AccumulationBufferDirty = false;
-            }
-
-            if (Accumulate) {
-                
-                Blitter.BlitCameraTexture(cmd, rtPathtracingBuffer, rtBackBuffer, AccumulationMaterial, 0);
-
-                Blitter.BlitCameraTexture(cmd, rtBackBuffer, rtCameraColor);
-
-                FrameCount++;
+                // Rendering done, just blit result to screen
+                if (Accumulate)
+                {
+                    Blitter.BlitCameraTexture(cmd, rtBackBuffer, rtCameraColor);
+                }
+                else 
+                {
+                    Blitter.BlitCameraTexture(cmd, rtPathtracingBuffer, rtCameraColor);
+                }
             }
             else
             {
-                Blitter.BlitCameraTexture(cmd, rtPathtracingBuffer, rtCameraColor);
+                if (Accumulate)
+                {
+                    // Copy previous result to accumulation buffer
+                    Blitter.BlitCameraTexture(cmd, rtBackBuffer, rtAccumulationBuffer);
+                }
+
+                DispatchHalogenTrace(cmd, camera);
+
+                AccumulationMaterial.SetTexture("_AccumulationBuffer", rtAccumulationBuffer);
+                AccumulationMaterial.SetInteger("_FrameCount", FrameCount);
+
+                if (AccumulationBufferDirty)
+                {
+                    CoreUtils.SetRenderTarget(cmd, rtAccumulationBuffer);
+                    CoreUtils.ClearRenderTarget(cmd, ClearFlag.Color, Color.black);
+                    AccumulationBufferDirty = false;
+                }
+
+                if (Accumulate)
+                {
+
+                    Blitter.BlitCameraTexture(cmd, rtPathtracingBuffer, rtBackBuffer, AccumulationMaterial, 0);
+
+                    Blitter.BlitCameraTexture(cmd, rtBackBuffer, rtCameraColor);
+
+                    FrameCount++;
+                }
+                else
+                {
+                    Blitter.BlitCameraTexture(cmd, rtPathtracingBuffer, rtCameraColor);
+                }
             }
         }
         context.ExecuteCommandBuffer(cmd);
         CommandBufferPool.Release(cmd);
+    }
+
+    private void DispatchHalogenTrace(CommandBuffer cmd, Camera camera) {
+        // Calculate w/2 and h/2 for clipping plane
+        float nClip = NearPlaneDistance;
+        float h = Mathf.Tan(Mathf.Deg2Rad * camera.fieldOfView * 0.5f) * nClip;
+        float w = camera.aspect * h;
+
+
+        cmd.SetComputeMatrixParam(halogenShader, "CamLocalToWorldMatrix", camera.transform.localToWorldMatrix);
+        cmd.SetComputeVectorParam(halogenShader, "ScreenParameters", new Vector3(camera.pixelWidth, camera.pixelHeight, 0));
+        cmd.SetComputeVectorParam(halogenShader, "ViewParameters", new Vector4(w, h, nClip, FarPlaneDistance));
+        cmd.SetComputeVectorParam(halogenShader, "CameraParameters", camera.transform.position);
+
+
+        cmd.SetComputeBufferParam(halogenShader, kernelIndex, "MeshList", meshBuffer);
+        cmd.SetComputeBufferParam(halogenShader, kernelIndex, "SphereList", sphereBuffer);
+        cmd.SetComputeBufferParam(halogenShader, kernelIndex, "MaterialList", materialBuffer);
+        cmd.SetComputeBufferParam(halogenShader, kernelIndex, "TriangleBuffer", triangleBuffer);
+        cmd.SetComputeBufferParam(halogenShader, kernelIndex, "BLASBuffer", BLASBuffer);
+
+        cmd.SetComputeIntParam(halogenShader, "frameID", Accumulate ? FrameCount : 1);
+        cmd.SetComputeIntParam(halogenShader, "RandomSeed", Accumulate ? FrameCount : 1);
+        cmd.SetComputeIntParam(halogenShader, "default_hdri_mipmap", EnvironmentMipLevel);
+
+        cmd.SetComputeVectorParam(halogenShader, "BufferCounts", new Vector4(sphereList.Count, meshList.Count, 0, 0));
+        cmd.SetComputeIntParam(halogenShader, "SamplesPerPixel", SamplesPerPixel);
+        cmd.SetComputeIntParam(halogenShader, "MaxBounces", MaxBounces);
+
+        // Debugging parameters
+        cmd.SetComputeIntParam(halogenShader, "HalogenDebugMode", HalogenDebugMode);
+        cmd.SetComputeIntParam(halogenShader, "TriangleDebugDisplayRange", TriangleDebugDisplayRange);
+        cmd.SetComputeIntParam(halogenShader, "BoxDebugDisplayRange", BoxDebugDisplayRange);
+
+        cmd.SetComputeFloatParam(halogenShader, "focalPlaneDistance", FocalPlaneDistance);
+        cmd.SetComputeFloatParam(halogenShader, "focalConeAngle", ApertureAngle);
+
+        cmd.SetComputeTextureParam(halogenShader, kernelIndex, "EnvironmentCubemap", EnvironmentCubemap);
+        cmd.SetComputeIntParam(halogenShader, "UseEnvironmentCubemap", UseEnvironmentCubemap ? 1 : 0);
+
+        cmd.SetComputeTextureParam(halogenShader, kernelIndex, "Output", rtPathtracingBuffer);
+        cmd.SetComputeTextureParam(halogenShader, kernelIndex, "OutputSecondBounce", rtSecondBounceBuffer);
+
+        //Debug.Log("Dispatching " + Mathf.CeilToInt((float)camera.pixelWidth / TileSize) + " X Tiles for an X resolution of " + camera.pixelWidth);
+
+        // Perform path tracing
+        cmd.DispatchCompute(halogenShader, kernelIndex, Mathf.CeilToInt(camera.pixelWidth / (float)TileSize), Mathf.CeilToInt(camera.pixelHeight / (float)TileSize), 1);
+
     }
 
     public void Dispose()
@@ -501,5 +533,9 @@ public class HalogenRenderPass : ScriptableRenderPass
             buffer?.Release();
             buffer = new ComputeBuffer(Mathf.Max(count, 1), stride);
         }
+    }
+
+    public int getFrameCount() {
+        return FrameCount;
     }
 }

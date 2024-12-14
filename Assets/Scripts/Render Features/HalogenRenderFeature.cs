@@ -34,7 +34,9 @@ public class HalogenSettings
 
     public int SamplesPerPixel;
     public int MaxBounces;
-    
+    public int MaxAccumulatedFrames;
+    public bool UnlimitedSampling = true;
+
     [Header("Camera")]
     public float NearPlaneDistance;
     public float FarPlaneDistance;
@@ -58,9 +60,15 @@ public class HalogenSettings
 [DisallowMultipleRendererFeature]
 public class HalogenRenderFeature : ScriptableRendererFeature
 {
-    [SerializeField] HalogenSettings settings;
+    [SerializeField] public HalogenSettings settings;
 
     private HalogenRenderPass halogenPass = null;
+
+    public static HalogenRenderFeature Instance;
+
+    HalogenRenderFeature() {
+        Instance = this;
+    }
 
 
     public override void Create()
@@ -78,9 +86,13 @@ public class HalogenRenderFeature : ScriptableRendererFeature
         
         if (Application.isPlaying) {
             HalogenDebugUI.AddFrameToAverage(settings.SamplesPerPixel * renderingData.cameraData.camera.pixelWidth * renderingData.cameraData.camera.pixelHeight);
+            HalogenDebugUI.frameCount = halogenPass.getFrameCount();
         }
 
         renderer.EnqueuePass(halogenPass);
+
+
+        
     }
 
     private void TryCreatePass()
@@ -97,5 +109,6 @@ public class HalogenRenderFeature : ScriptableRendererFeature
         halogenPass?.Dispose();
         base.Dispose(disposing);
     }
+
 
 }

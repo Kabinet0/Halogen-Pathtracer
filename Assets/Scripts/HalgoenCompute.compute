@@ -2,8 +2,8 @@
 #pragma use_dxc
 
 // TODO
-// [-] Absorbtion does something to opaque objects for some reason?
-// [-] Speckles on green panel in cornel box (Importance sampling bug)
+// [X] Absorbtion does something to opaque objects for some reason? [KIND OF]
+// [X] Speckles on green panel in cornel box (Importance sampling bug)
 // [-] Invert priority for dielectrics to make more sense
 // [-] Better importance sampling controls
 // [-] Basic instancing support
@@ -16,11 +16,15 @@
  
 
 #define QUESTIONABLE_IMPORTANCE_SAMPLING 1
+#define QUESTIONABLE_IMPORTANCE_SAMPLING_RANGE 8.0f // deeply jank
 
 static const float PI = radians(180);
 static const float epsilon = 0.00001f;
 static const float empty_medium_IOR = 1;
-static uint randomState;
+static uint hashState;
+static int sampleIndex = 0;
+
+int frameID;
 
 int RandomSeed;
 
@@ -178,21 +182,15 @@ StructuredBuffer<Sphere> SphereList;
 StructuredBuffer<Mesh> MeshList;
 float4 BufferCounts; // x: Spheres, y: MeshData
 
-uint u32_hash(uint value = randomState) {
+uint u32_hash(uint value = hashState) {
     uint state = value * 747796405u + 2891336453u;
     uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
     uint val = (word >> 22u) ^ word;
-    randomState = val;
+    hashState = val;
     return val;
 }
 
 
-// Literal Sebastian Lague theft: https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=679s
-// Also discovered (independantly I swear) from on https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ 
-float random_value()
-{
-    return (float) u32_hash() / 4294967296.0f;
-}
 
 // Todo add seed to this call
 // Thanks to https://psychopath.io/post/2021_01_30_building_a_better_lk_hash
@@ -234,12 +232,22 @@ uint sobol(uint index) {
     return p;
 }
 
-uint u32_owen_scrambled_sobol(uint index) {
-    return owen_scramble(sobol(index));
+uint u32_owen_scrambled_sobol(uint index = sampleIndex) {
+    float val = owen_scramble(sobol(index));
+    sampleIndex++;
+    return val;
+}
+ 
+uint float_owen_scrambled_sobol(uint index = sampleIndex) {
+    return ((float)u32_owen_scrambled_sobol(index)) / 4294967296.0f;
 }
 
-uint float_owen_scrambled_sobol(uint index) {
-    return u32_owen_scrambled_sobol(index) / 4294967296.0f;
+
+// Literal Sebastian Lague theft: https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=679s
+// Also discovered (independantly I swear) from on https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ 
+float random_value()
+{
+    return (float) u32_hash() / 4294967296.0f;
 }
 
 float3 get_random_unit_vector()
@@ -706,7 +714,7 @@ ParticipatingRayMedium get_top_ray_medium() {
 }
 
 // Todo: replace all of this with a proper microfacet model from PBR book
-float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium currentMedium, ParticipatingRayMedium hitMedium)
+float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium currentMedium, ParticipatingRayMedium hitMedium, inout bool didRefract)
 {
     float3 attenuation = float3(1, 1, 1);
 
@@ -738,6 +746,9 @@ float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium curren
         ray.origin = hit.pos + hit.normal * 0.0001; // offset from intersection for floating point reasons
     }  else {
         //// Do refraction ////
+
+        didRefract = true;
+
         attenuation = float3(1, 1, 1);
         bool totalInternalReflection = false;
         ray.dir = refract(ray.dir, hit.normal, currentMedium.indexOfRefraction, hitMedium.indexOfRefraction, totalInternalReflection);
@@ -815,7 +826,14 @@ float3 evaluate_material_hit(inout Ray ray, in RayHit hit) {
 
     // only evaluate bsdf if hit is "real"
     if (trueHit) {
-        attenuation = material_BRDF(ray, hit, currentMedium, hitMedium);
+        bool didRefract = false;
+        attenuation = material_BRDF(ray, hit, currentMedium, hitMedium, didRefract);
+
+        // I need to refactor this so badly
+        // bandaid fix 
+        if (hit.orientation > 0 && !didRefract) {
+            pop_from_medium_stack(hit.material.internalMedium.materialID);
+        }
     } else {
         ray.origin = hit.pos - hit.normal * 0.0001;
         attenuation = float3(1, 1, 1);
@@ -910,7 +928,7 @@ float3 trace_ray(in Ray ray)
         else
         {
             #if QUESTIONABLE_IMPORTANCE_SAMPLING
-                accumulatedColor += sample_sky(ray, round(default_hdri_mipmap + (accumulatedRoughnes * 2.0f))) * lightAttenuation; // Emissive
+                accumulatedColor += sample_sky(ray, round(default_hdri_mipmap + (accumulatedRoughnes * QUESTIONABLE_IMPORTANCE_SAMPLING_RANGE))) * lightAttenuation; // Emissive
             #else
                 accumulatedColor += sample_sky(ray) * lightAttenuation; // Emissive
             #endif
@@ -990,7 +1008,7 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
     
     float2 uv = float2((float)id.x / ScreenParameters.x, (float)id.y / ScreenParameters.y);
     float2 uvNDC = uv * 2.0f - 1.0f;
-    randomState = (id.x + id.y * ScreenParameters.x) * RandomSeed;
+    hashState = (id.x + id.y * ScreenParameters.x) * RandomSeed;
     
     float3 RayColor = float3(0.0f, 0.0f, 0.0f);
 
