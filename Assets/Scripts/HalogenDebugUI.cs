@@ -65,7 +65,7 @@ public class HalogenDebugUI : MonoBehaviour
                 sum += elem.rayCount;
             }
         }
-        Debug.Log(sum / 1000000.0f + " Mrays / sec");
+        //Debug.Log(sum / 1000000.0f + " Mrays / sec");
 
         UpdateMRaysText(sum);
         UpdateFrameCountText();

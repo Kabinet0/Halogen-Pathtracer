@@ -321,9 +321,10 @@ public class HalogenRenderPass : ScriptableRenderPass
                 DispatchHalogenTrace(cmd, camera);
 
                 AccumulationMaterial.SetTexture("_AccumulationBuffer", rtAccumulationBuffer);
-                AccumulationMaterial.SetInteger("_FrameCount", FrameCount);
+                AccumulationMaterial.SetFloat("_NewFrameWeight", 1.0f / FrameCount);
+                //AccumulationMaterial.SetInteger("_FrameCount", FrameCount);
 
-                if (AccumulationBufferDirty)
+                if (AccumulationBufferDirty) 
                 {
                     CoreUtils.SetRenderTarget(cmd, rtAccumulationBuffer);
                     CoreUtils.ClearRenderTarget(cmd, ClearFlag.Color, Color.black);

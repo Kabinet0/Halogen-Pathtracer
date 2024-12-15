@@ -192,7 +192,6 @@ uint u32_hash(uint value = hashState) {
 
 
 
-// Todo add seed to this call
 // Thanks to https://psychopath.io/post/2021_01_30_building_a_better_lk_hash
 // as well as https://jcgt.org/published/0009/04/01/
 uint owen_scramble(uint value) {
@@ -1008,7 +1007,11 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
     
     float2 uv = float2((float)id.x / ScreenParameters.x, (float)id.y / ScreenParameters.y);
     float2 uvNDC = uv * 2.0f - 1.0f;
-    hashState = (id.x + id.y * ScreenParameters.x) * RandomSeed;
+
+    // Crutially important 
+    // casting to uint makes the calculations wrap instead of clamp
+    // eliminating artifacts at high sample counts
+    hashState = ((uint)id.x + (uint)id.y * (uint)ScreenParameters.x) * (uint)RandomSeed;
     
     float3 RayColor = float3(0.0f, 0.0f, 0.0f);
 
