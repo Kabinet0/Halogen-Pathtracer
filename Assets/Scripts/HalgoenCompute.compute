@@ -13,21 +13,17 @@
 // [-] Punctual Lights
 // [-] Multiple Importance Sampling
 // [-] More debug views (roughness, whatever)
- 
 
+
+/* Constants */
 #define QUESTIONABLE_IMPORTANCE_SAMPLING 1
 #define QUESTIONABLE_IMPORTANCE_SAMPLING_RANGE 8.0f // deeply jank
 
 static const float PI = radians(180);
 static const float epsilon = 0.00001f;
 static const float empty_medium_IOR = 1;
-static uint hashState;
-static int sampleIndex = 0;
 
-int frameID;
-
-int RandomSeed;
-
+/* Input Data */
 float4x4 CamLocalToWorldMatrix;
 
 // Packing these more efficiently would be easy, but I don't want to
@@ -55,16 +51,18 @@ SamplerState EnviornmentCubemapSampler_trilinear_repeat;
 
 uint SamplesPerPixel;
 uint MaxBounces;
+int FrameCount;
 
 uint HalogenDebugMode;
 uint TriangleDebugDisplayRange;
 uint BoxDebugDisplayRange;
 
-int default_hdri_mipmap;
+int DefaultHDRIMipLevel;
 
 float focalPlaneDistance;
 float focalConeAngle;
 
+/* Struct definitions */
 struct ParticipatingRayMedium
 {
     float indexOfRefraction;
@@ -95,7 +93,7 @@ struct HalogenMaterial
     float roughness;
     float4 emissive;
 
-    // transmission related
+    /* Describes medium inside material (Meshes in Halogen need to be manifold) */
     ParticipatingRayMedium internalMedium;
 };
 
@@ -140,16 +138,16 @@ struct Ray
     float3 dir;
 };
 
-static ParticipatingRayMedium participatingMediumStack[8];
-static int mediumStackPointer = 0;
 
 struct MeshHitInfo
 {
     uint objectID;
 };
 
-// Data describing a ray hitting a surface, as well the surface being hit
-// Input data for BSDF
+/*
+ * Data describing a ray hitting a surface, as well the surface being hit
+ * Input data for BSDF
+*/
 struct RayHit
 {
     float rayT;
@@ -160,8 +158,10 @@ struct RayHit
     MeshHitInfo meshData;
 };
 
-// Data describing a ray intersecting a triangle
-// Used to build a RayHit once intersection testing is finished
+/*
+ * Data describing a ray intersecting a triangle
+ * Used to build a RayHit once intersection testing is finished
+*/
 struct RayTriangleIntersection
 {
     float rayT;
@@ -171,10 +171,7 @@ struct RayTriangleIntersection
     half orientation;
 };
 
-// Debugging variables
-static int TriangleTests = 0;
-static int AABBTests = 0;
-
+/* Data buffers */
 StructuredBuffer<Triangle> TriangleBuffer;
 StructuredBuffer<BVHEntry> BLASBuffer;
 StructuredBuffer<HalogenMaterial> MaterialList;
@@ -182,22 +179,129 @@ StructuredBuffer<Sphere> SphereList;
 StructuredBuffer<Mesh> MeshList;
 float4 BufferCounts; // x: Spheres, y: MeshData
 
-uint u32_hash(uint value = hashState) {
-    uint state = value * 747796405u + 2891336453u;
-    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-    uint val = (word >> 22u) ^ word;
-    hashState = val;
-    return val;
+/* Interface tracking for nested dielectrics */
+static ParticipatingRayMedium participatingMediumStack[8];
+static int mediumStackPointer = 0;
+
+/* Debugging Related Variables */
+static int TriangleTests = 0;
+static int AABBTests = 0;
+
+
+/*
+ * 2D [4][32] Array mapped to a 1D array 
+ * Dimensions past four are padded from this table
+*/
+uint sobol_table[128] = {
+    0x80000000, 0x40000000, 0x20000000, 0x10000000,
+    0x08000000, 0x04000000, 0x02000000, 0x01000000,
+    0x00800000, 0x00400000, 0x00200000, 0x00100000,
+    0x00080000, 0x00040000, 0x00020000, 0x00010000,
+    0x00008000, 0x00004000, 0x00002000, 0x00001000,
+    0x00000800, 0x00000400, 0x00000200, 0x00000100,
+    0x00000080, 0x00000040, 0x00000020, 0x00000010,
+    0x00000008, 0x00000004, 0x00000002, 0x00000001,
+
+    0x80000000, 0xc0000000, 0xa0000000, 0xf0000000,
+    0x88000000, 0xcc000000, 0xaa000000, 0xff000000,
+    0x80800000, 0xc0c00000, 0xa0a00000, 0xf0f00000,
+    0x88880000, 0xcccc0000, 0xaaaa0000, 0xffff0000,
+    0x80008000, 0xc000c000, 0xa000a000, 0xf000f000,
+    0x88008800, 0xcc00cc00, 0xaa00aa00, 0xff00ff00,
+    0x80808080, 0xc0c0c0c0, 0xa0a0a0a0, 0xf0f0f0f0,
+    0x88888888, 0xcccccccc, 0xaaaaaaaa, 0xffffffff,
+
+    0x80000000, 0xc0000000, 0x60000000, 0x90000000,
+    0xe8000000, 0x5c000000, 0x8e000000, 0xc5000000,
+    0x68800000, 0x9cc00000, 0xee600000, 0x55900000,
+    0x80680000, 0xc09c0000, 0x60ee0000, 0x90550000,
+    0xe8808000, 0x5cc0c000, 0x8e606000, 0xc5909000,
+    0x6868e800, 0x9c9c5c00, 0xeeee8e00, 0x5555c500,
+    0x8000e880, 0xc0005cc0, 0x60008e60, 0x9000c590,
+    0xe8006868, 0x5c009c9c, 0x8e00eeee, 0xc5005555,
+
+    0x80000000, 0xc0000000, 0x20000000, 0x50000000,
+    0xf8000000, 0x74000000, 0xa2000000, 0x93000000,
+    0xd8800000, 0x25400000, 0x59e00000, 0xe6d00000,
+    0x78080000, 0xb40c0000, 0x82020000, 0xc3050000,
+    0x208f8000, 0x51474000, 0xfbea2000, 0x75d93000,
+    0xa0858800, 0x914e5400, 0xdbe79e00, 0x25db6d00,
+    0x58800080, 0xe54000c0, 0x79e00020, 0xb6d00050,
+    0x800800f8, 0xc00c0074, 0x200200a2, 0x50050093
+};
+
+/*
+ * Helper function to index the 1D sobol direction table as 2D 
+*/
+uint sobol_table_get(uint dim, uint bit) {
+    return sobol_table[(dim * 32) + bit];
 }
 
+/*
+ * Dimension constants for the various random events in a frame
+ * TODO: Make sure combining use of 1D and 2D samples can't repeat sequences
+*/
+
+/* Used for setting up the ray's starting conditions */
+static const uint FOCAL_DISC_RANDOM_ID = 0;
+static const uint RAY_JITTER_RANDOM_ID = 1;
+
+/* Used for both rough reflection and refraction technically, depending on which event occurs */
+static const uint ROUGH_REFLECTION_RANDOM_ID = 2;
+
+/* Used for 2D sample that encompasses both doing refraction and specular scattering */
+static const uint MATERIAL_BRDF_PROPERTY_RANDOM_ID = 3; 
+
+/* What the random dimension offset is incremented by each bounce */
+static const uint BOUNCE_RANDOM_INCREMENT = 4; 
 
 
-// Thanks to https://psychopath.io/post/2021_01_30_building_a_better_lk_hash
-// as well as https://jcgt.org/published/0009/04/01/
-uint owen_scramble(uint value) {
+/* State for simple PRNG */
+static uint hashState;
+
+/* 
+ * https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
+ * PRNG variant of PCG hash
+*/
+uint u32_hash_stateful(uint value = hashState) {
+    uint state = value * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    hashState = state;
+
+    return (word >> 22u) ^ word;
+}
+
+/*
+ * Literal Sebastian Lague theft: https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=679s
+ * Also discovered (independantly I swear) from on https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ 
+ * 
+ * The standard PCG hash
+*/
+uint u32_hash(uint value) {
+    uint state = value * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+
+    return (word >> 22u) ^ word;;
+}
+
+/*  
+ * From Practical Hash-based Owen Scrambling (https://jcgt.org/published/0009/04/01/)
+ * Probably good enough to smash two numbers together
+ * Swap for something else later maybe
+*/
+uint hash_combine(uint seed, uint v) {
+    return seed ^ (v + (seed << 6) + (seed >> 2));
+}
+
+/*
+ * Thanks to https://psychopath.io/post/2021_01_30_building_a_better_lk_hash
+ * as well as PBRT
+ * used for both scrambling and shuffling the sobol sample sequence
+*/ 
+uint owen_scramble(uint value, uint seed) {
     // Randomize inital seed value
     // replace with u32 hash
-    uint seed = u32_hash();
+    // uint seed = u32_hash();
 
     uint x = reversebits(value);
 
@@ -217,38 +321,90 @@ uint owen_scramble(uint value) {
     return reversebits(x);
 }
 
-uint sobol(uint index) {
-    uint p = 0;
-    uint d = 0x80000000;
+// unknown source 1d sobol probably
+// uint sobol(uint index) {
+//     uint p = 0;
+//     uint d = 0x80000000;
 
-    for (; index != 0; index >>= 1) {
-        if ((index & 1) != 0) {
-            p ^= d;
-        }
-        d >>= 1;
+//     for (; index != 0; index >>= 1) {
+//         if ((index & 1) != 0) {
+//             p ^= d;
+//         }
+//         d >>= 1;
+//     }
+
+//     return p;
+// }
+
+uint sobol1d(uint index, uint dim) {
+    uint X = 0;
+    for (int bit = 0; bit < 32; bit++) {
+      int mask = (index >> bit) & 1;
+      X ^= mask * sobol_table_get(dim, bit);
     }
-
-    return p;
+    return X;
 }
 
-uint u32_owen_scrambled_sobol(uint index = sampleIndex) {
-    float val = owen_scramble(sobol(index));
-    sampleIndex++;
-    return val;
+uint2 sobol2d(uint index) {
+    return uint2(sobol1d(index, 0), sobol1d(index, 1));
+}
+
+uint4 sobol4d(uint index) {
+    return uint4(sobol1d(index, 0), sobol1d(index, 1), sobol1d(index, 2), sobol1d(index, 3));
+}
+
+
+/*
+ * Gets an element of a low discrepancy sample sequence
+ * Seed shuffles and effectively pads dimensions
+ * dimension is fed into seed to make function easier to use
+ * seed should be pixel index
+ * index is sample index
+*/
+uint u32_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
+    seed ^= u32_hash(dimension);
+
+    uint output = owen_scramble(sobol1d(index, 0), u32_hash(seed)); // scrambling adds randomization 
+
+    return output;
+}
+
+/*
+ * Gets a 2D element of a low discrepancy sample sequence
+ * See the 1D variant for more information
+*/
+uint u32_2d_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
+    seed ^= u32_hash(dimension);
+
+    // confusingly enough, owen_scramble() is used for both shuffling and scrambling
+    uint shuffledIndex = owen_scramble(index, seed); // shuffles index to decorrelate between dimensions
+    uint2 sobolPoints = sobol2d(shuffledIndex);
+
+    uint2 output;
+    // scrambling adds randomization 
+    output.x = owen_scramble(sobolPoints.x, hash_combine(seed, 0));
+    output.y = owen_scramble(sobolPoints.y, hash_combine(seed, 1));
+
+    return output;
 }
  
-uint float_owen_scrambled_sobol(uint index = sampleIndex) {
-    return ((float)u32_owen_scrambled_sobol(index)) / 4294967296.0f;
+uint float_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
+    return ((float)u32_owen_scrambled_sobol(index, dimension, seed)) / 4294967296.0f;
 }
 
-
-// Literal Sebastian Lague theft: https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=679s
-// Also discovered (independantly I swear) from on https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ 
+/*
+ * Wraps u32_hash_stateful, giving a very simple but decent PRNG sequence
+ * Returns floats between 0-1
+*/
 float random_value()
 {
-    return (float) u32_hash() / 4294967296.0f;
+    return (float) u32_hash_stateful() / 4294967296.0f;
 }
 
+
+/*
+ * Gets a random unit vector well distributed within a sphere
+*/
 float3 get_random_unit_vector()
 {
     float u = random_value();
@@ -268,6 +424,9 @@ float3 get_random_unit_vector()
     return randomVector;
 }
 
+/*
+ * Gets a random point vector well distributed within 2D circle
+*/
 float2 get_random_point_circle(float radius)
 {
     float theta = radians(random_value() * 360);
@@ -275,7 +434,9 @@ float2 get_random_point_circle(float radius)
     return float2(cos(theta) * radius * distAlongRadius, sin(theta) * radius * distAlongRadius);
 }
 
-float3 sample_sky(Ray ray, int level = default_hdri_mipmap)
+
+
+float3 sample_sky(Ray ray, int level = DefaultHDRIMipLevel)
 {
     // float v = 0.5f * (ray.dir.y + 1.0f);
     // return lerp(float3(0.1f, 0.1f, 0.1f), float3(0.5f, 0.7f, 1.0f), v) * 0.7f;
@@ -285,7 +446,9 @@ float3 sample_sky(Ray ray, int level = default_hdri_mipmap)
     return float3(0.0f, 0.0f, 0.0f);
 }
 
-// Ensures direction normalization after being converted 
+/*
+ * Ensures direction normalization after being converted 
+*/
 Ray convert_ray_space(in Ray ray, float4x4 mat)
 {
     Ray outputRay;
@@ -295,7 +458,9 @@ Ray convert_ray_space(in Ray ray, float4x4 mat)
     return outputRay;
 }
 
-// Explicitly does not normalize direction
+/*
+ * Explicitly does not normalize direction
+*/
 Ray convert_ray_space_unf(in Ray ray, float4x4 mat)
 {
     Ray outputRay;
@@ -305,7 +470,9 @@ Ray convert_ray_space_unf(in Ray ray, float4x4 mat)
     return outputRay;
 }
 
-// Takes a normal (might be backface) and flips if needed based on ray
+/*
+ * Takes a normal (might be backface) and flips if needed based on ray
+*/
 void determine_frontface(inout RayHit hit, float3 dir) 
 {
     bool frontFace = dot(dir, hit.normal) < 0.0;
@@ -314,7 +481,9 @@ void determine_frontface(inout RayHit hit, float3 dir)
     }
 }
 
-// ray_preInv means it expects a pre inverted direction aka. dir = 1/dir is precomputed and baked into the ray struct 
+/*
+ * ray_preInv expects a pre inverted direction aka. 1/dir, which is precomputed and baked into the ray struct 
+*/
 float ray_AABB_test(float3 cornerA, float3 cornerB, in Ray ray_preInv)
 {
     float3 t1 = (cornerA - ray_preInv.origin) * ray_preInv.dir;
@@ -558,19 +727,25 @@ RayHit get_ray_intersection(in Ray ray)
     return closestHit;
 }
 
-// Always scatters
-float3 lambertain_scatter(in float3 incident, in float3 normal)
+/* 
+ * Combines a random vector with a normal using a Lambertian distribution 
+ * Additionally performs checks (one check lol) to ensure validitiy
+*/
+float3 lambertain_scatter(in float3 normal, in float3 random_vector)
 {
-    float3 scatterPointLambertain = get_random_unit_vector() + normal;
+    float3 scatterPointLambertain = random_vector + normal;
     if (length(scatterPointLambertain) < 1e-8) { // Catch tiny ray distance & rounding errors
         scatterPointLambertain = normal;
     }
-        
-    return scatterPointLambertain;
+
+    // Not normalizing appears to do nothing here
+    // I don't know why        
+    return normalize(scatterPointLambertain);
 }
 
-// How does this work?
-// note apparently this is the same as the default hlsl reflect() function
+/*
+ * Note: apparently this is the same as the default hlsl reflect() function
+*/
 float3 specular_scatter(in float3 incident, in float3 normal)
 {
     return incident - 2 * dot(incident, normal) * normal;
@@ -581,7 +756,9 @@ float3 schlick_approximation(float3 specularColor, float3 incidentDirection, flo
     return specularColor + (1 - specularColor) * pow((1 - (incidentDirection * halfwayVector)), 5);
 }
 
-// calculates influence of fresnel
+/*
+ * Calculates influence of fresnel on specular value
+*/
 float schlick_adjusted_specular(float n1, float n2, float3 normal, float3 incident, float minSpecular, float maxSpecular)
 {
     // Schlick aproximation
@@ -605,14 +782,21 @@ float schlick_adjusted_specular(float n1, float n2, float3 normal, float3 incide
     return lerp(minSpecular, maxSpecular, ret);
 }
 
-// Trowbridge-Reitz Distribution 
-// Squares roughness to improve perceptual linearity
+/* 
+ * Trowbridge-Reitz Distribution 
+ * Squares roughness to improve perceptual linearity
+ * Entirely unimplemented unused remenant of trying to implement PBRT's microfacet BRDF
+ * Mostly a reminder for me to do this later
+*/
 float3 microfacet_normal_distribution(float3 halfwayVector, float roughness)
 {
     //float tan2Theta = tan2
     return float3(1, 1, 1);
 }
 
+/*
+ * Like the HLSL refract() function but with total internal reflection handling (At least I'm pretty sure HLSL's doesn't have it?)
+*/
 float3 refract(float3 incident, float3 normal, float n1, float n2, inout bool totalInternalReflection) {
     float cos_theta = min(dot(-incident, normal), 1.0);
     float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
@@ -630,8 +814,14 @@ float3 refract(float3 incident, float3 normal, float n1, float n2, inout bool to
     }
 }
 
-// TODO: Handle too many intersections
-// 0 is highest priority
+/* 
+ * Inserts a medium to the medium stack, sorts stack for basically free reading of the top element at any given moment
+ * I don't know if this is the most efficient way to do it, and I don't care
+ * Full of edgecase handling, and remarkably hard to read
+ * 
+ * TODO: Handle too many intersections, somehow
+ * TODO: 0 is the highest priority right now, invert that
+*/
 void add_to_medium_stack(in ParticipatingRayMedium medium) {
     // note:
     // mediumStackPointer refers to current size of stack, and ponints to where to put next element
@@ -674,6 +864,9 @@ void add_to_medium_stack(in ParticipatingRayMedium medium) {
     }
 }
 
+/*
+ * Attempt removing a medium from the interface tracking stack by ID
+*/
 void pop_from_medium_stack(uint materialID) {
     for (int i = 0; i < mediumStackPointer; i++) {
         if (participatingMediumStack[i].materialID == materialID) {
@@ -691,6 +884,18 @@ void pop_from_medium_stack(uint materialID) {
     // If the medium isn't found just cope about it I guess
 }
 
+/*
+ * Gets the top medium currently affecting the ray. The list is always sorted, so retreival is really simple. 
+*/
+ParticipatingRayMedium get_top_ray_medium() {
+    if (mediumStackPointer > 0) {
+        // stack not empty, get highest priority element
+        return participatingMediumStack[mediumStackPointer - 1];
+    } else {
+        return get_empty_medium(); // kinda sucks also does this take vgpr or something
+    }
+}
+
 bool determine_true_medium_hit(int priority) {
     // in case list is empty
     if (mediumStackPointer == 0) {
@@ -702,28 +907,25 @@ bool determine_true_medium_hit(int priority) {
     return false;
 }
 
-ParticipatingRayMedium get_top_ray_medium() {
-    if (mediumStackPointer > 0) {
-        // stack not empty, get highest priority element
-        return participatingMediumStack[mediumStackPointer - 1];
-    } else {
-        return get_empty_medium(); // kinda sucks also does this take vgpr or something
-    }
-
-}
-
-// Todo: replace all of this with a proper microfacet model from PBR book
+/*
+ * Kind of jank, loosely physically based BRDF
+ * really shouldn't conserve energy, but I've never checked, so who knows
+ * Todo: replace all of this with a proper microfacet model from PBRT
+*/
 float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium currentMedium, ParticipatingRayMedium hitMedium, inout bool didRefract)
 {
     float3 attenuation = float3(1, 1, 1);
 
     ray.origin = hit.pos;
 
+
+    float3 roughReflectionRandom = get_random_unit_vector();
     bool do_refraction = random_value() > hit.material.albedo.w;
+
     if (!do_refraction) {
         //// Regular bounce ////
         attenuation = hit.material.albedo.rgb;
-        float3 diffuseRayDir = lambertain_scatter(ray.dir, hit.normal);
+        float3 diffuseRayDir = lambertain_scatter(hit.normal, roughReflectionRandom);
 
         bool do_specular_scatter = random_value() < ((hit.material.metallic > 0) ? schlick_adjusted_specular(currentMedium.indexOfRefraction, hitMedium.indexOfRefraction, hit.normal, ray.dir,  hit.material.metallic, 1) : hit.material.metallic);
         if (do_specular_scatter)
@@ -751,17 +953,17 @@ float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium curren
         attenuation = float3(1, 1, 1);
         bool totalInternalReflection = false;
         ray.dir = refract(ray.dir, hit.normal, currentMedium.indexOfRefraction, hitMedium.indexOfRefraction, totalInternalReflection);
-
-
-
+        
         if (totalInternalReflection) {
-            float3 diffuseRefractionDir = normalize(hit.normal + get_random_unit_vector());
+            // float3 diffuseRefractionDir = normalize(hit.normal + roughRefractionVector);
+            float3 diffuseRefractionDir = lambertain_scatter(hit.normal, roughReflectionRandom);
             ray.dir = lerp(ray.dir, diffuseRefractionDir, hit.material.roughness * hit.material.roughness);
             ray.origin = hit.pos - hit.normal * 0.0001; // offset from intersection for floating point reasons, but in the opposite direction for refraction
             //attenuation = float3(1000, 1000, 1000);
             
         } else {
-            float3 diffuseRefractionDir = normalize(-hit.normal + get_random_unit_vector());
+            // float3 diffuseRefractionDir = normalize(-hit.normal + roughRefractionVector);
+            float3 diffuseRefractionDir = lambertain_scatter(-hit.normal, roughReflectionRandom);
             ray.dir = lerp(ray.dir, diffuseRefractionDir, hit.material.roughness * hit.material.roughness);
             ray.origin = hit.pos - hit.normal * 0.0001; // offset from intersection for floating point reasons, but in the opposite direction for refraction
             
@@ -849,7 +1051,7 @@ float3 evaluate_material_hit(inout Ray ray, in RayHit hit) {
 
 float3 trace_ray_debug_albedo(in Ray ray, in RayHit hit)
 {
-    // Verify ray hit something, if distance to hit is less than far plane
+    // Verify ray hit something (if distance to hit is less than far plane)
     if (hit.rayT < ViewParameters.w) {
         return hit.material.albedo;
     }
@@ -860,7 +1062,7 @@ float3 trace_ray_debug_albedo(in Ray ray, in RayHit hit)
 
 float3 trace_ray_debug_normal(in Ray ray, in RayHit hit)
 {
-    // Verify ray hit something, if distance to hit is less than far plane10
+    // Verify ray hit something (if distance to hit is less than far plane)
     if (hit.rayT < ViewParameters.w) {
         return (hit.normal + 1) / 2;
     }
@@ -893,7 +1095,9 @@ float3 trace_ray_debug_combined_intersections()
     return float3(TriangleTests / (float)TriangleDebugDisplayRange, 0, AABBTests / (float)BoxDebugDisplayRange);
 }
 
-// Iterative method documented here: https://www.cs.uaf.edu/2012/spring/cs481/section/0/lecture/02_07_recursion_reflection.html
+/*
+ * Iterative method documented here: https://www.cs.uaf.edu/2012/spring/cs481/section/0/lecture/02_07_recursion_reflection.html
+*/
 float3 trace_ray(in Ray ray)
 {
     float3 accumulatedColor = float3(0, 0, 0);
@@ -927,7 +1131,7 @@ float3 trace_ray(in Ray ray)
         else
         {
             #if QUESTIONABLE_IMPORTANCE_SAMPLING
-                accumulatedColor += sample_sky(ray, round(default_hdri_mipmap + (accumulatedRoughnes * QUESTIONABLE_IMPORTANCE_SAMPLING_RANGE))) * lightAttenuation; // Emissive
+                accumulatedColor += sample_sky(ray, round(DefaultHDRIMipLevel + (accumulatedRoughnes * QUESTIONABLE_IMPORTANCE_SAMPLING_RANGE))) * lightAttenuation; // Emissive
             #else
                 accumulatedColor += sample_sky(ray) * lightAttenuation; // Emissive
             #endif
@@ -1011,7 +1215,7 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
     // Crutially important 
     // casting to uint makes the calculations wrap instead of clamp
     // eliminating artifacts at high sample counts
-    hashState = ((uint)id.x + (uint)id.y * (uint)ScreenParameters.x) * (uint)RandomSeed;
+    hashState = ((uint)id.x + (uint)id.y * (uint)ScreenParameters.x) * (uint)FrameCount;
     
     float3 RayColor = float3(0.0f, 0.0f, 0.0f);
 

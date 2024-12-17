@@ -369,9 +369,8 @@ public class HalogenRenderPass : ScriptableRenderPass
         cmd.SetComputeBufferParam(halogenShader, kernelIndex, "TriangleBuffer", triangleBuffer);
         cmd.SetComputeBufferParam(halogenShader, kernelIndex, "BLASBuffer", BLASBuffer);
 
-        cmd.SetComputeIntParam(halogenShader, "frameID", Accumulate ? FrameCount : 1);
-        cmd.SetComputeIntParam(halogenShader, "RandomSeed", Accumulate ? FrameCount : 1);
-        cmd.SetComputeIntParam(halogenShader, "default_hdri_mipmap", EnvironmentMipLevel);
+        cmd.SetComputeIntParam(halogenShader, "FrameCount", Accumulate ? FrameCount : 1);
+        cmd.SetComputeIntParam(halogenShader, "DefaultHDRIMipLevel", EnvironmentMipLevel);
 
         cmd.SetComputeVectorParam(halogenShader, "BufferCounts", new Vector4(sphereList.Count, meshList.Count, 0, 0));
         cmd.SetComputeIntParam(halogenShader, "SamplesPerPixel", SamplesPerPixel);
