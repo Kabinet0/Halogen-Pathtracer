@@ -128,7 +128,7 @@ public class BVHGenerator
             nextEntryProcessingQueue.Clear();
         }
 
-        Debug.Log("Finished generating BVH for object: " + meshObject.gameObject.name + " with " + nodeSplitFailures + " node splitting failures.\nNode Depth: " + totalDepth + ", Max Node Depth: " + meshObject.MaxHierarchyDepth + ", Min Node Triangle Count: " + minTrisPerNode + ", Max Node Triangle Count: " + maxTrisPerNode);
+        Debug.Log("Finished generating BVH for object: " + meshObject.gameObject.name + " with " + nodeSplitFailures + " unsplit nodes.\nNode Depth: " + totalDepth + ", Max Node Depth: " + meshObject.MaxHierarchyDepth + ", Min Node Triangle Count: " + minTrisPerNode + ", Max Node Triangle Count: " + maxTrisPerNode);
     }
 
     // todo: this is kinda cursed, do something about it?
@@ -169,7 +169,7 @@ public class BVHGenerator
         Bounds bounds = new Bounds();
         bounds.SetMinMax(boundsMin, boundsMax);
 
-        if (!float.IsNormal(boundsMin.x))
+        if (!float.IsNormal(boundsMin.x) && boundsMin.x != 0)
         {
             Debug.Log("Error: bounding box contains NaN, start idx: " + startIndex + ", count: " + count);
         }

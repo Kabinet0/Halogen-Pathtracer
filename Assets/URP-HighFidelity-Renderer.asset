@@ -57,7 +57,7 @@ MonoBehaviour:
     SamplesPerPixel: 1
     MaxBounces: 12
     MaxAccumulatedFrames: 128
-    UnlimitedSampling: 0
+    UnlimitedSampling: 1
     NearPlaneDistance: 0.1
     FarPlaneDistance: 5000
     FocalPlaneDistance: 8.18

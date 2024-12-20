@@ -1,13 +1,15 @@
 #pragma kernel HalogenCompute
 #pragma use_dxc
 
-// TODO
+// TODO:
 // [X] Absorbtion does something to opaque objects for some reason? [KIND OF]
 // [X] Speckles on green panel in cornel box (Importance sampling bug)
+// [X] Owen scrambles sobol sampling
+// [-] Optimise sobol sampling
 // [-] Invert priority for dielectrics to make more sense
 // [-] Better importance sampling controls
 // [-] Basic instancing support
-// [-] Solve BVH Splitting errors
+// [X] Solve BVH Splitting errors [Turns out they weren't actual errors]
 // [-] Add SAH to BVH
 // [-] TLAS
 // [-] Punctual Lights
