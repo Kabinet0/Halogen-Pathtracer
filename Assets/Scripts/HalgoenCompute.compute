@@ -192,7 +192,7 @@ static int AABBTests = 0;
  * 2D [4][32] Array mapped to a 1D array 
  * Dimensions past four are padded from this table
 */
-uint sobol_table[128] = {
+static const uint sobol_table[128] = {
     0x80000000, 0x40000000, 0x20000000, 0x10000000,
     0x08000000, 0x04000000, 0x02000000, 0x01000000,
     0x00800000, 0x00400000, 0x00200000, 0x00100000,
@@ -219,7 +219,7 @@ uint sobol_table[128] = {
     0x6868e800, 0x9c9c5c00, 0xeeee8e00, 0x5555c500,
     0x8000e880, 0xc0005cc0, 0x60008e60, 0x9000c590,
     0xe8006868, 0x5c009c9c, 0x8e00eeee, 0xc5005555,
-
+ 
     0x80000000, 0xc0000000, 0x20000000, 0x50000000,
     0xf8000000, 0x74000000, 0xa2000000, 0x93000000,
     0xd8800000, 0x25400000, 0x59e00000, 0xe6d00000,
@@ -255,6 +255,9 @@ static const uint MATERIAL_BRDF_PROPERTY_RANDOM_ID = 3;
 /* What the random dimension offset is incremented by each bounce */
 static const uint BOUNCE_RANDOM_INCREMENT = 4; 
 
+/* RNG State */
+static uint SobolDimensionOffset = 0;
+static uint pixelID; 
 
 /* State for simple PRNG */
 static uint hashState;
@@ -349,7 +352,7 @@ uint2 sobol2d(uint index) {
     return uint2(sobol1d(index, 0), sobol1d(index, 1));
 }
 
-uint4 sobol4d(uint index) {
+uint4 sobol4d(uint index) { 
     return uint4(sobol1d(index, 0), sobol1d(index, 1), sobol1d(index, 2), sobol1d(index, 3));
 }
 
@@ -373,7 +376,7 @@ uint u32_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
  * Gets a 2D element of a low discrepancy sample sequence
  * See the 1D variant for more information
 */
-uint u32_2d_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
+uint2 u32_2d_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
     seed ^= u32_hash(dimension);
 
     // confusingly enough, owen_scramble() is used for both shuffling and scrambling
@@ -387,9 +390,39 @@ uint u32_2d_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
 
     return output;
 }
+
+
+/*
+ * Gets a 4D element of a low discrepancy sample sequence
+ * See the 1D variant for more information
+*/
+uint4 u32_4d_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
+    seed ^= u32_hash(dimension);
+
+    // confusingly enough, owen_scramble() is used for both shuffling and scrambling
+    uint shuffledIndex = owen_scramble(index, seed); // shuffles index to decorrelate between dimensions
+    uint4 sobolPoints = sobol4d(shuffledIndex);
+
+    uint4 output;
+    // scrambling adds randomization 
+    output.x = owen_scramble(sobolPoints.x, hash_combine(seed, 0));
+    output.y = owen_scramble(sobolPoints.y, hash_combine(seed, 1));
+    output.z = owen_scramble(sobolPoints.z, hash_combine(seed, 2));
+    output.w = owen_scramble(sobolPoints.w, hash_combine(seed, 3));
+
+    return output;
+}
  
-uint float_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
-    return ((float)u32_owen_scrambled_sobol(index, dimension, seed)) / 4294967296.0f;
+float float_owen_scrambled_sobol(uint index, uint dimensionID, uint seed) {
+    return ((float)u32_owen_scrambled_sobol(index, SobolDimensionOffset + dimensionID, seed)) / 4294967296.0f;
+}
+
+float2 float2_owen_scrambled_sobol(uint index, uint dimensionID, uint seed) {
+    return ((float2)u32_2d_owen_scrambled_sobol(index, SobolDimensionOffset + dimensionID, seed)) / 4294967296.0f;
+}
+
+float4 float4_owen_scrambled_sobol(uint index, uint dimensionID, uint seed) {
+    return ((float4)u32_4d_owen_scrambled_sobol(index, SobolDimensionOffset + dimensionID, seed)) / 4294967296.0f;
 }
 
 /*
@@ -405,12 +438,11 @@ float random_value()
 /*
  * Gets a random unit vector well distributed within a sphere
 */
-float3 get_random_unit_vector()
+float3 get_random_unit_vector(float2 randomData)
 {
-    float u = random_value();
-    float v = random_value();
-    float theta = u * 2.0 * PI;
-    float phi = acos(2.0 * v - 1.0);
+    float2 uv = randomData;
+    float theta = uv.x * 2.0 * PI;
+    float phi = acos(2.0 * uv.y - 1.0);
     float r = 1;
     float sinTheta = sin(theta);
     float cosTheta = cos(theta);
@@ -427,10 +459,10 @@ float3 get_random_unit_vector()
 /*
  * Gets a random point vector well distributed within 2D circle
 */
-float2 get_random_point_circle(float radius)
+float2 get_random_point_circle(float radius, float2 randomData)
 {
-    float theta = radians(random_value() * 360);
-    float distAlongRadius = random_value();
+    float theta = radians(randomData.x * 360);
+    float distAlongRadius = randomData.y;
     return float2(cos(theta) * radius * distAlongRadius, sin(theta) * radius * distAlongRadius);
 }
 
@@ -919,15 +951,19 @@ float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium curren
     ray.origin = hit.pos;
 
 
-    float3 roughReflectionRandom = get_random_unit_vector();
-    bool do_refraction = random_value() > hit.material.albedo.w;
+    float2 randomData = float2_owen_scrambled_sobol(FrameCount, ROUGH_REFLECTION_RANDOM_ID, pixelID);
+    float2 propertyRandom = float2_owen_scrambled_sobol(FrameCount, MATERIAL_BRDF_PROPERTY_RANDOM_ID, pixelID);
+
+    float3 roughReflectionRandom = get_random_unit_vector(randomData.xy);
+    bool do_refraction = propertyRandom.x > hit.material.albedo.w;
+    float specular_scatter_random = propertyRandom.y;
 
     if (!do_refraction) {
         //// Regular bounce ////
         attenuation = hit.material.albedo.rgb;
         float3 diffuseRayDir = lambertain_scatter(hit.normal, roughReflectionRandom);
 
-        bool do_specular_scatter = random_value() < ((hit.material.metallic > 0) ? schlick_adjusted_specular(currentMedium.indexOfRefraction, hitMedium.indexOfRefraction, hit.normal, ray.dir,  hit.material.metallic, 1) : hit.material.metallic);
+        bool do_specular_scatter = specular_scatter_random < ((hit.material.metallic > 0) ? schlick_adjusted_specular(currentMedium.indexOfRefraction, hitMedium.indexOfRefraction, hit.normal, ray.dir,  hit.material.metallic, 1) : hit.material.metallic);
         if (do_specular_scatter)
         {
             float3 specularRayDir = specular_scatter(ray.dir, hit.normal);
@@ -1137,6 +1173,9 @@ float3 trace_ray(in Ray ray)
             #endif
             break;
         }
+
+        /* Increment sobol dimension offset to sample different dimensions per bounce */
+        SobolDimensionOffset += BOUNCE_RANDOM_INCREMENT;
     }
     
     return accumulatedColor;
@@ -1176,8 +1215,9 @@ float3 trace_ray_debug(in Ray ray)
 
 float2 get_ray_jitter()
 {
-    float jitterX = ((ViewParameters.x * 2) / ScreenParameters.x) * (random_value() - 0.5f);
-    float jitterY = ((ViewParameters.y * 2) / ScreenParameters.y) * (random_value() - 0.5f);
+    float2 jitterRandom = float2_owen_scrambled_sobol(FrameCount, RAY_JITTER_RANDOM_ID, pixelID);
+    float jitterX = ((ViewParameters.x * 2) / ScreenParameters.x) * (jitterRandom.x - 0.5f);
+    float jitterY = ((ViewParameters.y * 2) / ScreenParameters.y) * (jitterRandom.y - 0.5f);
     
     return float2(jitterX, jitterY);
 }
@@ -1185,7 +1225,7 @@ float2 get_ray_jitter()
 Ray get_ray(float2 uvNDC)
 {
     float focalDiscRadius = tan(radians(focalConeAngle)) * ViewParameters.z;
-    float3 rayAperturePoint = float3(get_random_point_circle(focalDiscRadius), 0);
+    float3 rayAperturePoint = float3(get_random_point_circle(focalDiscRadius, float2_owen_scrambled_sobol(FrameCount, FOCAL_DISC_RANDOM_ID, pixelID)), 0);
     
     //float clipPlaneModifier = ViewParameters.x / focalPlaneDistance;
     float3 rayScreenPoint = float3(uvNDC.x, uvNDC.y, 1.0f) * ViewParameters.xyz; // Camera space
@@ -1216,6 +1256,7 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
     // casting to uint makes the calculations wrap instead of clamp
     // eliminating artifacts at high sample counts
     hashState = ((uint)id.x + (uint)id.y * (uint)ScreenParameters.x) * (uint)FrameCount;
+    pixelID = u32_hash((uint)id.x + (uint)id.y * (uint)ScreenParameters.x);
     
     float3 RayColor = float3(0.0f, 0.0f, 0.0f);
 
