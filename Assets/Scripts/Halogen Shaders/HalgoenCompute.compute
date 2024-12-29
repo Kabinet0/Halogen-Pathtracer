@@ -18,6 +18,7 @@
 // [-] Punctual Lights
 // [-] Multiple Importance Sampling 
 // [-] More debug views (roughness, whatever)
+// [-] Per ray type bounce limits (more for transparency)
 
 
 /* Input Data */
@@ -58,6 +59,8 @@ int DefaultHDRIMipLevel;
 
 float focalPlaneDistance;
 float focalConeAngle;
+
+float FilterRadius; // in pixels
 
 /* Struct definitions */
 struct ParticipatingRayMedium
@@ -668,10 +671,10 @@ float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium curren
     ray.origin = hit.pos;
 
 
-    float2 randomData = float2_owen_scrambled_sobol(FrameCount, ROUGH_REFLECTION_RANDOM_ID, pixelID);
+    float2 reflectionRandom = float2_owen_scrambled_sobol(FrameCount, ROUGH_REFLECTION_RANDOM_ID, pixelID);
     float2 propertyRandom = float2_owen_scrambled_sobol(FrameCount, MATERIAL_BRDF_PROPERTY_RANDOM_ID, pixelID);
 
-    float3 roughReflectionRandom = get_random_unit_vector(randomData.xy);
+    float3 roughReflectionRandom = get_random_unit_vector(reflectionRandom.xy);
     bool do_refraction = propertyRandom.x > hit.material.albedo.w;
     float specular_scatter_random = propertyRandom.y;
 
@@ -869,13 +872,14 @@ float3 trace_ray(in Ray ray)
         // Verify ray hit something, if distance to hit is less than far plane
         if (hit.rayT < ViewParameters.w)
         {
-            // Scatters ray with diffuse BRDF, or ignores interaction de pending on dielectric priority
+            // Add light based on how attenuated ray currently is
+            float3 emissive = hit.material.emissive.rgb * hit.material.emissive.a;
+            accumulatedColor += emissive * lightAttenuation;
+
+            // Scatters ray with BRDF, or ignores interaction depending on dielectric priority
             float3 attenuation = evaluate_material_hit(ray, hit); // attenuates and scatters
 
-            
-            float3 emissive = hit.material.emissive.rgb * hit.material.emissive.a;
-            
-            accumulatedColor += emissive * lightAttenuation;
+            // attenuate ray based on light absorbed by hit
             lightAttenuation *= attenuation; 
 
             // accumulate roughness accross bounces to do some really bad importance sampling with mipmaps
@@ -932,10 +936,13 @@ float3 trace_ray_debug(in Ray ray)
 
 float2 get_ray_jitter()
 {
+    float2 pixelSize = float2(((ViewParameters.x * 2) / ScreenParameters.x), ((ViewParameters.y * 2) / ScreenParameters.y));
     float2 jitterRandom = float2_owen_scrambled_sobol(FrameCount, RAY_JITTER_RANDOM_ID, pixelID);
-    float jitterX = ((ViewParameters.x * 2) / ScreenParameters.x) * (jitterRandom.x - 0.5f);
-    float jitterY = ((ViewParameters.y * 2) / ScreenParameters.y) * (jitterRandom.y - 0.5f);
-    
+    // float jitterX = ((ViewParameters.x * 2) / ScreenParameters.x) * (jitterRandom.x - 0.5f);
+    // float jitterY = ((ViewParameters.y * 2) / ScreenParameters.y) * (jitterRandom.y - 0.5f);
+
+    float jitterX = (inverted_blackman_harris_cdf_approximation(jitterRandom.x) - 0.5) * 2 * FilterRadius * pixelSize.x;
+    float jitterY = (inverted_blackman_harris_cdf_approximation(jitterRandom.y) - 0.5) * 2 * FilterRadius * pixelSize.y;
     return float2(jitterX, jitterY);
 }
 
@@ -974,7 +981,7 @@ void HalogenCompute (uint3 id : SV_DispatchThreadID)
      * Init both sobol sampler and PRNG Hash
      *
      * Casting to uint makes the calculations wrap instead of clamp
-     * which eliminates artifacts at high sample counts.
+     * which eliminates artifacts at high sample counts for PRNG (if used). 
     */
     setup_random_state((uint)id.x + (uint)id.y * (uint)ScreenParameters.x, FrameCount);
     

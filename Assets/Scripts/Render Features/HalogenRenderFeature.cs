@@ -1,7 +1,7 @@
 using UnityEngine.Rendering.Universal;
 using UnityEngine;
 using System.Collections.Generic;
-
+using UnityEngine.Rendering;
 
 public enum HalogenDebugMode {
     None,
@@ -37,6 +37,9 @@ public class HalogenSettings
     public int MaxAccumulatedFrames;
     public bool UnlimitedSampling = true;
 
+    [Header("Film")]
+    public float FilterRadius = 1.5f;
+
     [Header("Camera")]
     public float NearPlaneDistance;
     public float FarPlaneDistance;
@@ -58,7 +61,7 @@ public class HalogenSettings
 } 
 
 [DisallowMultipleRendererFeature]
-public class HalogenRenderFeature : ScriptableRendererFeature
+public class HalogenRenderFeature : ScriptableRendererFeature 
 {
     [SerializeField] public HalogenSettings settings;
 

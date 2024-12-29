@@ -90,6 +90,15 @@ uint u32_hash_stateful(uint value = hashState) {
 }
 
 /*
+ * Wraps u32_hash_stateful, giving a very simple but decent PRNG sequence
+ * Returns floats between 0-1
+*/
+float random_value() 
+{
+    return (float) u32_hash_stateful() / 4294967296.0f;
+}
+
+/*
  * Literal Sebastian Lague theft: https://www.youtube.com/watch?v=Qz0KTGYJtUk&t=679s
  * Also discovered (independantly I swear) from on https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ 
  * 
@@ -236,28 +245,33 @@ uint4 u32_4d_owen_scrambled_sobol(uint index, uint dimension, uint seed) {
 
     return output;
 }
- 
+
 float float_owen_scrambled_sobol(uint index, uint dimensionID, uint seed) {
+    // For debugging
+    #if OVERRIDE_SAMPLING_TO_PRNG
+        return random_value();
+    #endif
+
     return ((float)u32_owen_scrambled_sobol(index, SobolDimensionOffset + dimensionID, seed)) / 4294967296.0f;
 }
 
 float2 float2_owen_scrambled_sobol(uint index, uint dimensionID, uint seed) {
+    // For debugging
+    #if OVERRIDE_SAMPLING_TO_PRNG
+        return float2(random_value(), random_value());
+    #endif
+    
     return ((float2)u32_2d_owen_scrambled_sobol(index, SobolDimensionOffset + dimensionID, seed)) / 4294967296.0f;
 }
 
 float4 float4_owen_scrambled_sobol(uint index, uint dimensionID, uint seed) {
+    // For debugging
+    #if OVERRIDE_SAMPLING_TO_PRNG
+        return float4(random_value(), random_value(), random_value(), random_value());
+    #endif
+
     return ((float4)u32_4d_owen_scrambled_sobol(index, SobolDimensionOffset + dimensionID, seed)) / 4294967296.0f;
 }
-
-/*
- * Wraps u32_hash_stateful, giving a very simple but decent PRNG sequence
- * Returns floats between 0-1
-*/
-float random_value()
-{
-    return (float) u32_hash_stateful() / 4294967296.0f;
-}
-
 
 /*
  * Gets a random unit vector well distributed within a sphere
@@ -290,5 +304,26 @@ float2 get_random_point_circle(float radius, float2 randomData)
     return float2(cos(theta) * radius * distAlongRadius, sin(theta) * radius * distAlongRadius);
 }
 
+/*
+ * Applies a Blackman-Harris filter with a specified width. 
+ * Inspired by this post: https://computergraphics.stackexchange.com/questions/2130/anti-aliasing-filtering-in-ray-tracing
+*/
+float blackman_harris_filter(float x, float width) {
+    float phi = FLOAT_2_PI * (x / width);
+    return 0.35875f - 0.48829f * cos(phi) + 0.14128f * cos(2.0f * phi) - 0.01168f * cos(3.0f * phi);
+}
+
+float arctanh(float x) {
+    return 0.5f * log((1+x)/(1-x));
+}
+
+/*
+ * Generates a Blackman-Harris probabillity distribution 
+ * Works through Inverse Transform Sampling with an inverted approximation of the CDF for the blackman harris distribution 
+ * See more here: https://www.desmos.com/calculator/cn4gx0sdyb
+*/
+float inverted_blackman_harris_cdf_approximation(float x) {
+    return ((x*1.99221575606) - 0.99610787803) / 6.24;
+}
 
 #endif

@@ -123,6 +123,53 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &12827400
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 12827402}
+  - component: {fileID: 12827401}
+  m_Layer: 0
+  m_Name: Debug
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &12827401
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 12827400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40e2117c75a82eb4bac209b0ba92e444, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  outputTexture: {fileID: 8600000, guid: 3075f970370fd0c4c8d485ed2c912c29, type: 2}
+  shader: {fileID: 7200000, guid: 6904773d1456b7b4e82bfaf78f04f57b, type: 3}
+  run: 1
+--- !u!4 &12827402
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 12827400}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &28365042
 GameObject:
   m_ObjectHideFlags: 0
@@ -476,7 +523,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material:
-    color: {r: 0, g: 1, b: 0.060247898, a: 1}
+    color: {r: 0, g: 0.8414836, b: 1, a: 1}
     roughness: 1
     metallic: 0
     specularColor: {r: 1, g: 1, b: 1, a: 1}
@@ -487,6 +534,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!64 &139507088
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -719,6 +767,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!4 &188276260 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a47406085bc6ffa438b22eca58eb7b10,
@@ -773,7 +822,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material:
-    color: {r: 1, g: 0, b: 0, a: 1}
+    color: {r: 1, g: 0.27699995, b: 0.27699995, a: 1}
     roughness: 1
     metallic: 0
     specularColor: {r: 1, g: 1, b: 1, a: 1}
@@ -784,6 +833,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!64 &254522450
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -1114,6 +1164,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!1 &330399598
 GameObject:
   m_ObjectHideFlags: 0
@@ -1173,6 +1224,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!64 &330399601
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -1440,8 +1492,9 @@ MonoBehaviour:
     absorption: 0
     dielectricPriority: 0
     emissionColor: {r: 1, g: 1, b: 1, a: 1}
-    emissionIntensity: 2
+    emissionIntensity: 5
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &352205336
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1702,6 +1755,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!64 &379989499
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -2575,6 +2629,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!1 &555362644
 GameObject:
   m_ObjectHideFlags: 0
@@ -2963,6 +3018,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!1 &611814024
 GameObject:
   m_ObjectHideFlags: 0
@@ -3007,6 +3063,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &611814026
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3136,6 +3193,7 @@ MonoBehaviour:
     emissionColor: {r: 1, g: 0, b: 0.76097584, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!23 &650831232
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -3459,6 +3517,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!1 &780873878
 GameObject:
   m_ObjectHideFlags: 0
@@ -3518,6 +3577,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &780873881
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3999,6 +4059,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!1 &968930025
 GameObject:
   m_ObjectHideFlags: 0
@@ -4436,6 +4497,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &1124436480
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -4696,6 +4758,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &1143349601
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -4826,6 +4889,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &1144958433
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -4956,6 +5020,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!64 &1157460199
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -5353,6 +5418,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!135 &1248192472
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -5571,7 +5637,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1303320785
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5971,6 +6037,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!64 &1330358328
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -6729,6 +6796,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!1 &1490129026
 GameObject:
   m_ObjectHideFlags: 0
@@ -6778,8 +6846,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   material:
     color: {r: 1, g: 1, b: 1, a: 1}
-    roughness: 1
-    metallic: 0
+    roughness: 0.701
+    metallic: 1
     specularColor: {r: 1, g: 1, b: 1, a: 1}
     subsurfaceColor: {r: 1, g: 1, b: 1, a: 1}
     indexOfRefraction: 1
@@ -6788,6 +6856,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!64 &1490129029
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -6919,6 +6988,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &1507508263
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -7242,6 +7312,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!1001 &1562383298
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7370,6 +7441,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!1 &1577908284
 GameObject:
   m_ObjectHideFlags: 0
@@ -7559,6 +7631,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!64 &1582871903
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -7854,6 +7927,7 @@ MonoBehaviour:
     emissionColor: {r: 1, g: 1, b: 1, a: 1}
     emissionIntensity: 5
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &1629837701
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -8705,6 +8779,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &1809335040
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -8835,6 +8910,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!64 &1838880771
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -9185,6 +9261,7 @@ MonoBehaviour:
     emissionColor: {r: 0, g: 0, b: 0, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!65 &1994273870
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -9494,6 +9571,7 @@ MonoBehaviour:
     emissionColor: {r: 1, g: 1, b: 1, a: 1}
     emissionIntensity: 0
   MaxHierarchyDepth: 32
+  LogBVHCreation: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -9508,3 +9586,4 @@ SceneRoots:
   - {fileID: 1901224372}
   - {fileID: 816700288}
   - {fileID: 28365043}
+  - {fileID: 12827402}

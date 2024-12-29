@@ -55,14 +55,15 @@ MonoBehaviour:
     ShowInSceneView: 1
     Accumulate: 1
     SamplesPerPixel: 1
-    MaxBounces: 3
-    MaxAccumulatedFrames: 512
+    MaxBounces: 4
+    MaxAccumulatedFrames: 16
     UnlimitedSampling: 1
+    FilterRadius: 1.5
     NearPlaneDistance: 0.1
     FarPlaneDistance: 5000
     FocalPlaneDistance: 8.18
     ApertureAngle: 0
-    useHDRISky: 0
+    useHDRISky: 1
     environmentCubemap: {fileID: 8900000, guid: 84a08f961f57d8343a1bc1c04275dd0b,
       type: 3}
     EnvironmentMipLevel: 1

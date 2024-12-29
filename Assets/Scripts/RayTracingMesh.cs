@@ -14,6 +14,7 @@ public class RayTracingMesh : MonoBehaviour
 
     [Header("Acceleration Structure Parameters")]
     public int MaxHierarchyDepth = 32;
+    public bool LogBVHCreation;
 
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;

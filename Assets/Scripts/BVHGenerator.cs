@@ -128,7 +128,9 @@ public class BVHGenerator
             nextEntryProcessingQueue.Clear();
         }
 
-        Debug.Log("Finished generating BVH for object: " + meshObject.gameObject.name + " with " + nodeSplitFailures + " unsplit nodes.\nNode Depth: " + totalDepth + ", Max Node Depth: " + meshObject.MaxHierarchyDepth + ", Min Node Triangle Count: " + minTrisPerNode + ", Max Node Triangle Count: " + maxTrisPerNode);
+        if (meshObject.LogBVHCreation) {
+            Debug.Log("Finished generating BVH for object: " + meshObject.gameObject.name + " with " + nodeSplitFailures + " unsplit nodes.\nNode Depth: " + totalDepth + ", Max Node Depth: " + meshObject.MaxHierarchyDepth + ", Min Node Triangle Count: " + minTrisPerNode + ", Max Node Triangle Count: " + maxTrisPerNode);
+        }
     }
 
     // todo: this is kinda cursed, do something about it?

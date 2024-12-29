@@ -3,8 +3,6 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using UnityEditor.Rendering;
-using UnityEngine.Experimental.Rendering;
 using Unity.Mathematics;
 using System.Linq;
 
@@ -101,6 +99,7 @@ public class HalogenRenderPass : ScriptableRenderPass
     float FarPlaneDistance;
     float FocalPlaneDistance;
     float ApertureAngle;
+    float FilterRadius;
 
     int HalogenDebugMode;
     int TriangleDebugDisplayRange;
@@ -168,6 +167,7 @@ public class HalogenRenderPass : ScriptableRenderPass
 
         MaxBounces = Mathf.Max(0, _settings.MaxBounces);
 
+        FilterRadius = Mathf.Max(0, _settings.FilterRadius);
         FocalPlaneDistance = Mathf.Max(Mathf.Epsilon, _settings.FocalPlaneDistance);
 
         NearPlaneDistance = Mathf.Max(Mathf.Epsilon, _settings.NearPlaneDistance);
@@ -298,7 +298,7 @@ public class HalogenRenderPass : ScriptableRenderPass
             Camera camera = renderingData.cameraData.camera;
 
             
-            if (!UnlimitedSampling && FrameCount >= MaxAccumulatedFrames)
+            if (!UnlimitedSampling && FrameCount > MaxAccumulatedFrames)
             {
                 // Rendering done, just blit result to screen
                 if (Accumulate)
@@ -383,6 +383,7 @@ public class HalogenRenderPass : ScriptableRenderPass
 
         cmd.SetComputeFloatParam(halogenShader, "focalPlaneDistance", FocalPlaneDistance);
         cmd.SetComputeFloatParam(halogenShader, "focalConeAngle", ApertureAngle);
+        cmd.SetComputeFloatParam(halogenShader, "FilterRadius", FilterRadius);
 
         cmd.SetComputeTextureParam(halogenShader, kernelIndex, "EnvironmentCubemap", EnvironmentCubemap);
         cmd.SetComputeIntParam(halogenShader, "UseEnvironmentCubemap", UseEnvironmentCubemap ? 1 : 0);
