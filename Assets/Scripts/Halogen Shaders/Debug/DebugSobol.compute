@@ -5,19 +5,38 @@
 #include "../HalogenRandom.hlsl"
 
 RWTexture2D<float4> _DebugOutput;
+int _TextureSize;
+
+
+void clear_texture(float4 color) {
+    for (int x = 0; x < _TextureSize; x++) {
+        for (int y = 0; y < _TextureSize; y++) {
+            _DebugOutput[float2(x, y)] = color;
+        } 
+    }
+}
 
 [numthreads(1,1,1)]
 void DebugKernel (uint3 id : SV_DispatchThreadID)
 {
     setup_random_state(0, 0);
-    for (int k = 0; k < 512; k++) {
-        for (int i = 0; i < 512; i++) {
-            _DebugOutput[float2(i, k)] = float4(0, 0, 0, 1);
-        } 
-    }
-    for (int j = 0; j < 4096; j++) { 
-        _DebugOutput[(int2)(float2_owen_scrambled_sobol(j, 6, 283718) * 512)] = float4(1, 0, 0, 1);
-        //_DebugOutput[int2(random_value()  * 512, random_value()  * 512)] = float4(1, 0, 0, 1);
+    clear_texture(float4(0, 0, 0, 1));
+
+    /* Debug random number generation */
+    // uint sampleCount = 4096;
+    // for (int j = 0; j < sampleCount; j++) { 
+    //     _DebugOutput[(int2)(float2_owen_scrambled_sobol(j, 6, 283718) * _TextureSize)] = float4(1, 0, 0, 1);
+    // }
+
+    /* Debug pixel filter response */
+    uint sampleCount = 100000;
+    for (int j = 0; j < sampleCount; j++) { 
+        float2 random = float2_owen_scrambled_sobol(j, 0, 0);
+        
+        uint2 pos;
+        pos.x = (inverted_blackman_harris_cdf_approximation(random.x) + 0.5) * _TextureSize;
+        pos.y = (inverted_blackman_harris_cdf_approximation(random.y) + 0.5) * _TextureSize;
+        _DebugOutput[pos] += float4(float3(1, 1, 1) * 0.08, 0);
     }
 }
  

@@ -19,6 +19,7 @@
 // [-] Multiple Importance Sampling 
 // [-] More debug views (roughness, whatever)
 // [-] Per ray type bounce limits (more for transparency)
+// [X] Blackman-Harris Filtering 
 
 
 /* Input Data */
@@ -862,11 +863,6 @@ float3 trace_ray(in Ray ray)
     
     for (uint rayInteractions = 0; rayInteractions <= MaxBounces; rayInteractions++)
     {
-        if (length(lightAttenuation) < 0.05f)
-        {
-            break;
-        }
-        
         RayHit hit = get_ray_intersection(ray);
         
         // Verify ray hit something, if distance to hit is less than far plane
@@ -884,6 +880,31 @@ float3 trace_ray(in Ray ray)
 
             // accumulate roughness accross bounces to do some really bad importance sampling with mipmaps
             accumulatedRoughnes += hit.material.roughness * lightAttenuation;
+
+
+            /* Sample random value for Russian Roulette */
+            float russianRouletteRandom = float_owen_scrambled_sobol(FrameCount, RUSSIAN_ROULETTE_RANDOM_ID, pixelID);
+
+            /* 
+             * Increment sobol dimension offset to sample different sobol dimensions per bounce 
+             * Done before russain roulette termination to avoid reusing dimensions if a ray is terminated
+            */
+            SobolDimensionOffset += BOUNCE_RANDOM_INCREMENT;
+
+            #if !OVERRIDE_DISABLE_RUSSIAN_ROULETTE
+            
+                /*
+                * Russian Roulette
+                * As the contribution of a ray decreases, it becomes more likely that it is terminated randomly
+                */
+                float contribution = length(lightAttenuation);
+                if (russianRouletteRandom > contribution) {
+                    break;
+                }
+
+                // Add back lost energy from other paths that may have been terminated
+                lightAttenuation *= 1 / contribution;
+            #endif
         }
         else
         {
@@ -894,9 +915,6 @@ float3 trace_ray(in Ray ray)
             #endif
             break;
         }
-
-        /* Increment sobol dimension offset to sample different dimensions per bounce */
-        SobolDimensionOffset += BOUNCE_RANDOM_INCREMENT;
     }
     
     return accumulatedColor;

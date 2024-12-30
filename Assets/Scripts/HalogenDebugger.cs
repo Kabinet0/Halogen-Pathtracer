@@ -20,15 +20,6 @@ public class HalogenDebugger : MonoBehaviour
     
     void Start()
     {
-        //if (!SystemInfo.supportsGraphicsFence) {
-        //    //Debug.Log("System does not support graphics fences");
-
-        //    // whatever
-
-
-        //    return;
-        //}
-
         if (!run) { 
             return;
         }
@@ -37,9 +28,16 @@ public class HalogenDebugger : MonoBehaviour
             Debug.Log("Cannot run debug kernel. One or more inputs are null.");
             return;
         }
+
+        if (outputTexture.width != outputTexture.height) {
+            Debug.Log("Debug texture isn't square. Stopping debugger.");
+            return;
+        }
+
         int kernelID = shader.FindKernel("DebugKernel");
 
         shader.SetTexture(kernelID, "_DebugOutput", outputTexture);
+        shader.SetInt("_TextureSize", outputTexture.width);
 
         shader.Dispatch(kernelID, 1, 1, 1);
 

@@ -67,8 +67,11 @@ static const uint ROUGH_REFLECTION_RANDOM_ID = 2;
 /* Used for 2D sample that encompasses both doing refraction and specular scattering */
 static const uint MATERIAL_BRDF_PROPERTY_RANDOM_ID = 3; 
 
+/* Used for Russain Roulette */
+static const uint RUSSIAN_ROULETTE_RANDOM_ID = 4;
+
 /* What the random dimension offset is incremented by each bounce */
-static const uint BOUNCE_RANDOM_INCREMENT = 4; 
+static const uint BOUNCE_RANDOM_INCREMENT = 5; 
 
 /* RNG State */
 static uint SobolDimensionOffset = 0;
@@ -320,10 +323,10 @@ float arctanh(float x) {
 /*
  * Generates a Blackman-Harris probabillity distribution 
  * Works through Inverse Transform Sampling with an inverted approximation of the CDF for the blackman harris distribution 
- * See more here: https://www.desmos.com/calculator/cn4gx0sdyb
+ * See more here: https://www.desmos.com/calculator/lmdujiojny
 */
 float inverted_blackman_harris_cdf_approximation(float x) {
-    return ((x*1.99221575606) - 0.99610787803) / 6.24;
+    return arctanh((x*1.99221575606) - 0.99610787803) / 6.24;
 }
 
-#endif
+#endif  
