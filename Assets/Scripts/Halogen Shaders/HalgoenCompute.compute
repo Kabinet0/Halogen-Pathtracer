@@ -18,7 +18,7 @@
 // [-] Punctual Lights
 // [-] Multiple Importance Sampling 
 // [-] More debug views (roughness, whatever)
-// [-] Per ray type bounce limits (more for transparency)
+// [X] Per ray type bounce limits (more for transparency)
 // [X] Blackman-Harris Filtering 
 
 
@@ -48,15 +48,19 @@ int UseEnvironmentCubemap;
 TextureCube EnvironmentCubemap;
 SamplerState EnviornmentCubemapSampler_trilinear_repeat;
 
+int FrameCount;
+
 uint SamplesPerPixel;
 uint MaxBounces;
-int FrameCount;
+uint MaxDiffuseBounces;
+uint MaxGlossyBounces;
+uint MaxTransmissionBounces;
 
 uint HalogenDebugMode;
 uint TriangleDebugDisplayRange;
 uint BoxDebugDisplayRange;
 
-int DefaultHDRIMipLevel;
+int DefaultHDRIMipLevel; 
 
 float focalPlaneDistance;
 float focalConeAngle;
@@ -665,7 +669,7 @@ bool determine_true_medium_hit(int priority) {
  * really shouldn't conserve energy, but I've never checked, so who knows
  * Todo: replace all of this with a proper microfacet model from PBRT
 */
-float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium currentMedium, ParticipatingRayMedium hitMedium, inout bool didRefract)
+float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium currentMedium, ParticipatingRayMedium hitMedium, inout uint bounceType)
 {
     float3 attenuation = float3(1, 1, 1);
 
@@ -685,6 +689,8 @@ float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium curren
         float3 diffuseRayDir = lambertain_scatter(hit.normal, roughReflectionRandom);
 
         bool do_specular_scatter = specular_scatter_random < ((hit.material.metallic > 0) ? schlick_adjusted_specular(currentMedium.indexOfRefraction, hitMedium.indexOfRefraction, hit.normal, ray.dir,  hit.material.metallic, 1) : hit.material.metallic);
+        bounceType = do_specular_scatter ? 1 : 0;
+        
         if (do_specular_scatter)
         {
             float3 specularRayDir = specular_scatter(ray.dir, hit.normal);
@@ -705,7 +711,7 @@ float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium curren
     }  else {
         //// Do refraction ////
 
-        didRefract = true;
+        bounceType = 2;
 
         attenuation = float3(1, 1, 1);
         bool totalInternalReflection = false;
@@ -734,7 +740,7 @@ float3 material_BRDF(inout Ray ray, in RayHit hit, ParticipatingRayMedium curren
     return attenuation;
 }
 
-float3 evaluate_material_hit(inout Ray ray, in RayHit hit) {
+float3 evaluate_material_hit(inout Ray ray, in RayHit hit, inout uint bounceTypes[3]) {
     float3 attenuation = float3(1, 1, 1);
 
     // Can't use ternary operator because hlsl
@@ -784,17 +790,21 @@ float3 evaluate_material_hit(inout Ray ray, in RayHit hit) {
 
     // only evaluate bsdf if hit is "real"
     if (trueHit) {
-        bool didRefract = false;
-        attenuation = material_BRDF(ray, hit, currentMedium, hitMedium, didRefract);
+        uint bounceType = 0;
+        attenuation = material_BRDF(ray, hit, currentMedium, hitMedium, bounceType);
+
+        bounceTypes[bounceType]++;
 
         // I need to refactor this so badly
         // bandaid fix 
-        if (hit.orientation > 0 && !didRefract) {
+        if (hit.orientation > 0 && bounceType != 2) {
             pop_from_medium_stack(hit.material.internalMedium.materialID);
         }
     } else {
         ray.origin = hit.pos - hit.normal * 0.0001;
         attenuation = float3(1, 1, 1);
+
+        bounceTypes[2]++;
     }
 
     if (currentMedium.materialID != -1) {
@@ -853,6 +863,14 @@ float3 trace_ray_debug_combined_intersections()
 }
 
 /*
+ * Checks if any bounce count has exceed the allowed maximum. 
+ * (a bounce limit of 0 allows one bounce)
+*/
+bool check_if_ray_should_terminate(uint bounceTypes[3]) {
+    return bounceTypes[0] > MaxDiffuseBounces || bounceTypes[1] > MaxGlossyBounces || bounceTypes[2] > MaxTransmissionBounces;
+}
+
+/*
  * Iterative method documented here: https://www.cs.uaf.edu/2012/spring/cs481/section/0/lecture/02_07_recursion_reflection.html
 */
 float3 trace_ray(in Ray ray)
@@ -860,9 +878,20 @@ float3 trace_ray(in Ray ray)
     float3 accumulatedColor = float3(0, 0, 0);
     float3 lightAttenuation = float3(1, 1, 1); 
     float accumulatedRoughnes = 0;
+
+    /*
+        * 0 - Diffuse Bounce
+        * 1 - Specular Bounce
+        * 2 - Transmissive Bounce
+    */
+    uint bounceTypes[3] = {0, 0, 0};
     
     for (uint rayInteractions = 0; rayInteractions <= MaxBounces; rayInteractions++)
     {
+        if (check_if_ray_should_terminate(bounceTypes)) {
+            break;
+        }
+
         RayHit hit = get_ray_intersection(ray);
         
         // Verify ray hit something, if distance to hit is less than far plane
@@ -873,7 +902,7 @@ float3 trace_ray(in Ray ray)
             accumulatedColor += emissive * lightAttenuation;
 
             // Scatters ray with BRDF, or ignores interaction depending on dielectric priority
-            float3 attenuation = evaluate_material_hit(ray, hit); // attenuates and scatters
+            float3 attenuation = evaluate_material_hit(ray, hit, bounceTypes); // attenuates and scatters
 
             // attenuate ray based on light absorbed by hit
             lightAttenuation *= attenuation; 
@@ -897,7 +926,7 @@ float3 trace_ray(in Ray ray)
                 * Russian Roulette
                 * As the contribution of a ray decreases, it becomes more likely that it is terminated randomly
                 */
-                float contribution = length(lightAttenuation);
+                float contribution = max(max(lightAttenuation.x, lightAttenuation.y), lightAttenuation.z);
                 if (russianRouletteRandom > contribution) {
                     break;
                 }

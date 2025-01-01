@@ -30,12 +30,18 @@ public class HalogenSettings
     public bool ShowInSceneView;
     public bool Accumulate;
 
-    [Header("Ray Tracing")]
+    [Header("Sampling")]
 
     public int SamplesPerPixel;
-    public int MaxBounces;
     public int MaxAccumulatedFrames;
     public bool UnlimitedSampling = true;
+
+    [Header("Bounces")]
+
+    public int MaxBounces = 12;
+    public int DiffuseBounces = 4;
+    public int GlossyBounces = 4;
+    public int TransmissionBounces = 12;
 
     [Header("Film")]
     public float FilterRadius = 1.5f;

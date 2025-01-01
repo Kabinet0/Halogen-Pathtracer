@@ -85,6 +85,9 @@ public class HalogenRenderPass : ScriptableRenderPass
 
     int SamplesPerPixel;
     int MaxBounces;
+    int MaxDiffuseBounces;
+    int MaxGlossyBounces;
+    int MaxTransmissionBounces;
 
     int MaxAccumulatedFrames;
 
@@ -166,11 +169,14 @@ public class HalogenRenderPass : ScriptableRenderPass
         SamplesPerPixel = Mathf.Max(1, _settings.SamplesPerPixel);
 
         MaxBounces = Mathf.Max(0, _settings.MaxBounces);
+        MaxDiffuseBounces = Mathf.Max(0, _settings.DiffuseBounces);
+        MaxGlossyBounces = Mathf.Max(0, _settings.GlossyBounces);
+        MaxTransmissionBounces = Mathf.Max(0, _settings.TransmissionBounces);
 
         FilterRadius = Mathf.Max(0, _settings.FilterRadius);
         FocalPlaneDistance = Mathf.Max(Mathf.Epsilon, _settings.FocalPlaneDistance);
 
-        NearPlaneDistance = Mathf.Max(Mathf.Epsilon, _settings.NearPlaneDistance);
+        NearPlaneDistance = Mathf.Max(Mathf.Epsilon, _settings.NearPlaneDistance); 
         FarPlaneDistance = Mathf.Max(NearPlaneDistance + Mathf.Epsilon, _settings.FarPlaneDistance);
 
         ApertureAngle = Mathf.Clamp(_settings.ApertureAngle, 0, 89.9f);
@@ -375,6 +381,9 @@ public class HalogenRenderPass : ScriptableRenderPass
         cmd.SetComputeVectorParam(halogenShader, "BufferCounts", new Vector4(sphereList.Count, meshList.Count, 0, 0));
         cmd.SetComputeIntParam(halogenShader, "SamplesPerPixel", SamplesPerPixel);
         cmd.SetComputeIntParam(halogenShader, "MaxBounces", MaxBounces);
+        cmd.SetComputeIntParam(halogenShader, "MaxDiffuseBounces", MaxDiffuseBounces);
+        cmd.SetComputeIntParam(halogenShader, "MaxGlossyBounces", MaxGlossyBounces);
+        cmd.SetComputeIntParam(halogenShader, "MaxTransmissionBounces", MaxTransmissionBounces);
 
         // Debugging parameters
         cmd.SetComputeIntParam(halogenShader, "HalogenDebugMode", HalogenDebugMode);
