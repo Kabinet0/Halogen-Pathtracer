@@ -23,4 +23,5 @@ Halogen is a software path tracer written in HLSL and C#. It features full suppo
 <p align="center">
   <img src="./Assets/Textures/Cornell Box.png" />
   <img src="./Assets/Textures/Overhead.png" />
+  <img src="./Assets/Textures/Dragons.png" />
 </p>
