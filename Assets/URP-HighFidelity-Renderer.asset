@@ -58,9 +58,9 @@ MonoBehaviour:
     MaxAccumulatedFrames: 16
     UnlimitedSampling: 1
     MaxBounces: 12
-    MaxDiffuseBounces: 4
-    MaxGlossyBounces: 4
-    MaxTransmissionBounces: 12
+    DiffuseBounces: 4
+    GlossyBounces: 4
+    TransmissionBounces: 12
     FilterRadius: 1
     NearPlaneDistance: 0.1
     FarPlaneDistance: 5000
